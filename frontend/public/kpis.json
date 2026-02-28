@@ -1,0 +1,15 @@
+{
+  "revenue_per_week": 1234.56,
+  "units_sold_per_slot": {"A": 50, "B": 34, "C": 20},
+  "stockout_events": 2,
+  "avg_transaction_value": 4.12,
+  "temperature_mean": 5.5,
+  "temperature_stdev": 0.7,
+  "payment_error_rate": 0.014,
+  "active_machines": 7,
+  "revenue_by_hour": [
+    {"timestamp": "2026-02-28T00:00:00Z", "revenue": 120},
+    {"timestamp": "2026-02-28T01:00:00Z", "revenue": 110},
+    {"timestamp": "2026-02-28T02:00:00Z", "revenue": 90}
+  ]
+}

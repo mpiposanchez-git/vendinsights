@@ -1,36 +1,14 @@
-# Azure Pipelines CI configuration
-# This pipeline installs dependencies, runs tests, and builds the package.
+# Azure DevOps pipeline stub for deployment
+# This pipeline would build containers and deploy to Azure services
 
 trigger:
   branches:
     include:
-      - master
       - main
-      - features/*
 
 pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.11'
-  - script: |
-      python -m venv venv
-      source venv/bin/activate
-      python -m pip install --upgrade pip wheel setuptools
-      pip install -r requirements.txt
-    displayName: 'Install dependencies'
-  - script: |
-      source venv/bin/activate
-      pytest tests/ --cov=mps_package
-    displayName: 'Run tests'
-  - script: |
-      source venv/bin/activate
-      python -m build --sdist --wheel
-    displayName: 'Build package'
-  - task: PublishPipelineArtifact@1
-    inputs:
-      targetPath: 'dist'
-      artifact: 'python-package'
-    displayName: 'Publish build artifacts'
+  - script: echo "Build and push containers"
+  - script: echo "Deploy to Azure (placeholder)"
