@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { getKpis } from '../api/client';
 
-export default function KpiTable() {
+export default function KpiTable({ token }) {
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getKpis()
+    if (!token) {
+      return;
+    }
+    getKpis(token)
       .then(setKpis)
       .catch((err) => setError(err.toString()));
-  }, []);
+  }, [token]);
 
   if (error) return <div className="error">Error loading KPIs: {error}</div>;
   if (!kpis) return <div>Loading KPIs…</div>;
@@ -35,3 +39,7 @@ export default function KpiTable() {
     </div>
   );
 }
+
+KpiTable.propTypes = {
+  token: PropTypes.string.isRequired,
+};

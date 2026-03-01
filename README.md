@@ -191,6 +191,34 @@ Built with React, Recharts for visualization, and CSS for responsive design.
 
 Deploy containerized functions to Azure using Azure DevOps, Docker, and the provided Bicep/Terraform infrastructure templates. See `azure-pipelines.yml` and `.github/workflows/ci.yml` for CI/CD configuration.
 
+### Free-tier deployment (frontend + protected access)
+
+If you want a zero-cost setup (within free quotas):
+
+1. **Frontend on GitHub Pages**
+  - Workflow: `.github/workflows/pages.yml`
+  - Add repository secret `REACT_APP_API_BASE_URL` with your backend URL (example: `https://your-backend.onrender.com`).
+  - Push to `main` to publish.
+
+2. **Backend on a free container host**
+  - Recommended hosts with free plans: Render or Koyeb.
+  - Build from `backend/insights_function/Dockerfile`.
+  - Expose port `8000`.
+
+3. **Set backend environment variables**
+  - `JWT_SECRET` = strong random secret (required)
+  - `ADMIN_USERNAME` = login username for dashboard
+  - `ADMIN_PASSWORD` = login password for dashboard
+  - `TOKEN_EXPIRE_MINUTES` = token duration (optional, default `60`)
+  - `ALLOWED_ORIGINS` = your GitHub Pages origin (optional, comma-separated)
+
+4. **Login flow**
+  - Frontend calls `POST /api/login` with username/password.
+  - Backend returns a bearer token.
+  - KPI endpoint `GET /api/kpis` requires `Authorization: Bearer <token>`.
+
+> Free-tier note: some free backends sleep after inactivity and have monthly usage limits.
+
 ### Docker Build
 
 Each backend function has a Dockerfile:

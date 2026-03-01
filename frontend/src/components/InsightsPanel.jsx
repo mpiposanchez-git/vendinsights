@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { getKpis } from '../api/client';
 import {
   BarChart,
@@ -11,16 +12,19 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-export default function InsightsPanel() {
+export default function InsightsPanel({ token }) {
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState(null);
   const [metric, setMetric] = useState('units');
 
   useEffect(() => {
-    getKpis()
+    if (!token) {
+      return;
+    }
+    getKpis(token)
       .then(setKpis)
       .catch((err) => setError(err.toString()));
-  }, []);
+  }, [token]);
 
   if (error) return <div className="error">Error loading insights: {error}</div>;
   if (!kpis) return <div>Loading insights…</div>;
@@ -74,3 +78,7 @@ export default function InsightsPanel() {
     </div>
   );
 }
+
+InsightsPanel.propTypes = {
+  token: PropTypes.string.isRequired,
+};
