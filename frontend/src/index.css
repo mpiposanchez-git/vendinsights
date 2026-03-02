@@ -151,6 +151,48 @@ select {
   line-height: 1.4;
 }
 
+.ask-direct-answer {
+  background-color: #f7fbf8;
+  border: 1px solid #d9efe0;
+  border-radius: 6px;
+  padding: 0.65rem 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.ask-direct-answer h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: #146c43;
+}
+
+.ask-direct-answer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.ask-direct-answer-header h4 {
+  margin: 0;
+}
+
+.intent-chip {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background-color: #e8f3ff;
+  color: #004070;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ask-direct-answer p {
+  margin: 0;
+  line-height: 1.4;
+}
+
 .ask-action-plan {
   margin-top: 0.9rem;
   background-color: #f4f8ff;
@@ -172,6 +214,24 @@ select {
 
 .ask-action-plan li {
   margin: 0.2rem 0;
+}
+
+.ask-analysis-details {
+  margin-top: 0.85rem;
+}
+
+.ask-analysis-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #004070;
+  margin-bottom: 0.5rem;
+}
+
+.ask-analysis-details[open] {
+  background-color: #fafafa;
+  border: 1px solid #ececec;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
 }
 
 .login-card {

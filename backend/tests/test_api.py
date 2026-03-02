@@ -101,3 +101,30 @@ def test_get_lumo_mode_shape_with_auth():
     body = res.json()
     assert "configured_mode" in body
     assert "active_mode" in body
+
+
+def test_ask_local_varies_by_prompt_intent(monkeypatch):
+    """Local strategist should produce different focused responses for different intents."""
+    monkeypatch.setenv("LUMO_MODE", "local")
+    from backend.insights_function import server as server_module
+
+    server_module.LUMO_MODE = "local"
+
+    stock_res = client.post(
+        "/api/ask",
+        headers=auth_headers(),
+        json={"question": "How should I restock inventory this week?", "machines": 3, "hours": 168},
+    )
+    payment_res = client.post(
+        "/api/ask",
+        headers=auth_headers(),
+        json={"question": "How can I reduce payment failures?", "machines": 3, "hours": 168},
+    )
+
+    assert stock_res.status_code == 200
+    assert payment_res.status_code == 200
+    stock_answer = stock_res.json()["answer"]
+    payment_answer = payment_res.json()["answer"]
+    assert stock_answer != payment_answer
+    assert "Direct answer:" in stock_answer
+    assert "Direct answer:" in payment_answer

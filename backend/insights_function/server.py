@@ -359,6 +359,26 @@ def _capacity_signal(machine_rollup: dict[str, dict[str, float]], stockout_ratio
 
     return False, "No immediate expansion signal; optimize stocking and payment reliability first."
 
+
+def _machine_with_highest(machine_rollup: dict[str, dict[str, float]], metric: str) -> str | None:
+    if not machine_rollup:
+        return None
+    return max(machine_rollup, key=lambda machine: machine_rollup[machine].get(metric, 0.0))
+
+
+def _detect_intent(question_text: str) -> str:
+    if any(word in question_text for word in ["new machine", "expand", "capacity", "location"]):
+        return "expansion"
+    if any(word in question_text for word in ["stock", "restock", "inventory", "slot", "out of stock"]):
+        return "inventory"
+    if any(word in question_text for word in ["payment", "card", "transaction error", "failed payment", "checkout"]):
+        return "payment"
+    if any(word in question_text for word in ["temperature", "cool", "cooling", "fridge", "refrigeration"]):
+        return "temperature"
+    if any(word in question_text for word in ["revenue", "sales", "profit", "growth", "decline", "drop", "performance"]):
+        return "sales"
+    return "general"
+
     top_revenue_machine = None
     top_stockout_machine = None
     if revenue_by_machine:
@@ -371,6 +391,7 @@ def _capacity_signal(machine_rollup: dict[str, dict[str, float]], stockout_ratio
 
 def _build_local_answer(question: str, context_payload: dict[str, Any], docs: list[dict]) -> str:
     question_text = (question or "").lower()
+    intent = _detect_intent(question_text)
     kpis = context_payload["kpis"]
 
     revenue = _safe_float(kpis.get("revenue_per_week"))
@@ -383,6 +404,7 @@ def _build_local_answer(question: str, context_payload: dict[str, Any], docs: li
 
     machine_rollup = _machine_rollup(docs)
     top_revenue_machine, top_stockout_machine = _top_machine_insights(docs)
+    top_payment_error_machine = _machine_with_highest(machine_rollup, "payment_errors")
     revenue_delta, revenue_trend = _recent_revenue_change(docs)
     temp_out_ratio = _temperature_out_of_range_ratio(docs)
 
@@ -450,6 +472,32 @@ def _build_local_answer(question: str, context_payload: dict[str, Any], docs: li
     if not action_plan:
         action_plan.append("P2 (this week): Keep current operating plan and monitor KPI deltas daily.")
 
+    direct_answer = ""
+    if intent == "inventory":
+        direct_answer = (
+            f"Inventory focus: prioritize {top_stockout_machine or 'the highest-stockout machine'} first and increase par levels for slot {best_slot or 'top-selling items'} "
+            f"to reduce current stockout pressure ({stockout_ratio:.1%})."
+        )
+    elif intent == "payment":
+        direct_answer = (
+            f"Payment focus: error rate is {payment_error:.2%}; start diagnostics on {top_payment_error_machine or 'high-error machines'} and verify terminal/network reliability."
+        )
+    elif intent == "temperature":
+        direct_answer = (
+            f"Temperature focus: mean is {float(temp_mean or 0):.2f}°C with {temp_out_ratio:.1%} out-of-range readings; inspect cooling performance where excursions cluster."
+        )
+    elif intent == "sales":
+        if revenue_delta is not None:
+            direct_answer = (
+                f"Sales focus: revenue trend is {revenue_trend} ({abs(revenue_delta):.1%} change); optimize assortment and restocking on {top_revenue_machine or 'top machines'} to improve throughput."
+            )
+        else:
+            direct_answer = "Sales focus: not enough history for robust trend detection; monitor daily revenue by machine and slot mix changes this week."
+    elif intent == "expansion":
+        direct_answer = expansion_note
+    else:
+        direct_answer = "Overall focus: reduce stockout pressure first, then improve payment reliability to unlock conversion gains."
+
     summary_lines = [
         "Local Lumo+ analysis from your telemetry data:",
         f"- Revenue/week estimate: ${revenue:,.2f}",
@@ -467,10 +515,40 @@ def _build_local_answer(question: str, context_payload: dict[str, Any], docs: li
         summary_lines.append(f"- Best-selling slot: {best_slot}")
     summary_lines.append(f"- Machine expansion signal: {'YES' if expand_needed else 'NO'}")
 
+    intent_highlight_filters = {
+        "inventory": ["Stockout pressure", "Best-selling product slot", "Top-performing machine"],
+        "payment": ["Payment error rate", "Top-performing machine", "Recent revenue trend"],
+        "temperature": ["Temperature", "Recent revenue trend", "Top-performing machine"],
+        "sales": ["Weekly-equivalent revenue", "Recent revenue trend", "Top-performing machine", "Best-selling product slot"],
+        "expansion": ["Weekly-equivalent revenue", "Stockout pressure", "Top-performing machine"],
+        "general": [],
+    }
+    filters = intent_highlight_filters.get(intent, [])
+    visible_highlights = (
+        [item for item in highlights if any(marker in item for marker in filters)]
+        if filters
+        else highlights
+    )
+    if not visible_highlights:
+        visible_highlights = highlights
+
+    if intent == "inventory":
+        strategies = [strategy for strategy in strategies if "stock" in strategy.lower() or "assortment" in strategy.lower() or "inventory" in strategy.lower()] or strategies
+    elif intent == "payment":
+        strategies = [strategy for strategy in strategies if "payment" in strategy.lower() or "terminal" in strategy.lower()] or strategies
+    elif intent == "temperature":
+        strategies = [strategy for strategy in strategies if "temperature" in strategy.lower() or "refrigeration" in strategy.lower()] or strategies
+    elif intent == "expansion":
+        strategies = [strategy for strategy in strategies if "expansion" in strategy.lower() or "machine" in strategy.lower() or "location" in strategy.lower()] or strategies
+
     answer_lines = summary_lines + [
         "",
+        "Direct answer:",
+        direct_answer,
+    ] + [
+        "",
         "Highlights right now:",
-    ] + [f"- {item}" for item in highlights] + [
+    ] + [f"- {item}" for item in visible_highlights] + [
         "",
         "Risks to watch:",
     ] + [f"- {item}" for item in risks] + [

@@ -2,6 +2,16 @@ import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { askLumo, getLumoMode } from '../api/client';
 
+function detectIntent(prompt) {
+  const text = (prompt || '').toLowerCase();
+  if (['new machine', 'expand', 'capacity', 'location'].some((word) => text.includes(word))) return 'Expansion';
+  if (['stock', 'restock', 'inventory', 'slot', 'out of stock'].some((word) => text.includes(word))) return 'Inventory';
+  if (['payment', 'card', 'transaction error', 'failed payment', 'checkout'].some((word) => text.includes(word))) return 'Payment';
+  if (['temperature', 'cool', 'cooling', 'fridge', 'refrigeration'].some((word) => text.includes(word))) return 'Temperature';
+  if (['revenue', 'sales', 'profit', 'growth', 'decline', 'drop', 'performance'].some((word) => text.includes(word))) return 'Sales';
+  return 'General';
+}
+
 // Lumo+ panel for natural-language questions over KPI + telemetry data.
 export default function AskBox({ token }) {
   const [question, setQuestion] = useState('');
@@ -9,6 +19,7 @@ export default function AskBox({ token }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState('local');
+  const [intentLabel, setIntentLabel] = useState('General');
 
   useEffect(() => {
     let mounted = true;
@@ -38,6 +49,7 @@ export default function AskBox({ token }) {
 
     setLoading(true);
     setError(null);
+    setIntentLabel(detectIntent(question.trim()));
     try {
       const response = await askLumo(token, question.trim());
       setAnswer(response.answer || 'No response received.');
@@ -49,9 +61,29 @@ export default function AskBox({ token }) {
   }
 
   const lines = answer ? answer.split('\n') : [];
+  const directAnswerHeader = 'Direct answer:';
   const actionPlanHeader = 'Action plan (next 7 days):';
+  const directAnswerIndex = lines.findIndex((line) => line.trim() === directAnswerHeader);
   const actionPlanIndex = lines.findIndex((line) => line.trim() === actionPlanHeader);
-  const summaryText = actionPlanIndex >= 0 ? lines.slice(0, actionPlanIndex).join('\n') : answer;
+  const preActionLines = actionPlanIndex >= 0 ? lines.slice(0, actionPlanIndex) : lines;
+
+  let directAnswerLineIndex = -1;
+  if (directAnswerIndex >= 0) {
+    for (let index = directAnswerIndex + 1; index < preActionLines.length; index += 1) {
+      if (preActionLines[index].trim()) {
+        directAnswerLineIndex = index;
+        break;
+      }
+    }
+  }
+
+  const directAnswer = directAnswerLineIndex >= 0 ? preActionLines[directAnswerLineIndex].trim() : '';
+
+  const analysisText = preActionLines
+    .filter((_, index) => index !== directAnswerIndex && index !== directAnswerLineIndex)
+    .join('\n')
+    .trim();
+
   const actionPlanItems =
     actionPlanIndex >= 0
       ? lines
@@ -86,7 +118,15 @@ export default function AskBox({ token }) {
       {answer && (
         <div className="ask-answer">
           <h3>Answer</h3>
-          <pre className="ask-answer-text">{summaryText}</pre>
+          {directAnswer && (
+            <div className="ask-direct-answer">
+              <div className="ask-direct-answer-header">
+                <h4>Direct Answer</h4>
+                <span className="intent-chip">Focus: {intentLabel}</span>
+              </div>
+              <p>{directAnswer}</p>
+            </div>
+          )}
           {actionPlanItems.length > 0 && (
             <div className="ask-action-plan">
               <h4>Action Plan (Next 7 Days)</h4>
@@ -96,6 +136,12 @@ export default function AskBox({ token }) {
                 ))}
               </ol>
             </div>
+          )}
+          {analysisText && (
+            <details className="ask-analysis-details">
+              <summary>Show Full Analysis</summary>
+              <pre className="ask-answer-text">{analysisText}</pre>
+            </details>
           )}
         </div>
       )}
