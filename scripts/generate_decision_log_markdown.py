@@ -4,7 +4,6 @@ import argparse
 import json
 from collections import OrderedDict
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -90,6 +89,7 @@ def _group_entries(entries: Iterable[DecisionEntry]) -> OrderedDict[str, Ordered
 def render_markdown(data: dict[str, Any], source_path: Path) -> str:
     project = data.get("project", {}) if isinstance(data.get("project"), dict) else {}
     project_name = project.get("name") or "Decision Log"
+    source_last_updated = project.get("last_updated")
 
     entries = _collect_entries(data)
     grouped = _group_entries(entries)
@@ -103,7 +103,8 @@ def render_markdown(data: dict[str, Any], source_path: Path) -> str:
     )
     lines.append("")
     lines.append(f"- Source: `{source_path.as_posix()}`")
-    lines.append(f"- Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    if isinstance(source_last_updated, str) and source_last_updated.strip():
+        lines.append(f"- Generated from source version: {source_last_updated.strip()}")
     lines.append(f"- Total decision entries: {len(entries)}")
     lines.append("")
 
