@@ -42,9 +42,9 @@
 		},
 		{
 			"id": "A-003",
-			"decision": "Use synthetic telemetry generation inside backend for default runtime.",
-			"rationale": "Guarantees app works without external databases or device feeds.",
-			"implementation": "generate_docs() in backend/insights_function/server.py"
+			"decision": "Persist telemetry in database and seed it with synthetic data when empty.",
+			"rationale": "Moves KPI computation to durable storage while preserving zero-friction startup.",
+			"implementation": "database.py + ensure_seeded_data() in backend/insights_function/server.py"
 		},
 		{
 			"id": "A-004",
@@ -341,8 +341,8 @@
 	"known_limitations_and_next_decisions": [
 		{
 			"id": "N-001",
-			"limitation": "No persistent database; metrics are generated per request.",
-			"next_decision_needed": "Choose storage layer (Cosmos DB, Postgres, or files) and ingestion path."
+			"limitation": "Current persistence model is seeded simulation data unless an external ingestion process is added.",
+			"next_decision_needed": "Implement production ingestion pipeline from real vending machine telemetry into the DB."
 		},
 		{
 			"id": "N-002",

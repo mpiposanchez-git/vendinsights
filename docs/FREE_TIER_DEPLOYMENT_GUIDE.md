@@ -6,6 +6,7 @@ Prefer a one-page version? See [FREE_TIER_DEPLOYMENT_QUICK.md](FREE_TIER_DEPLOYM
 
 - [ ] Deploy backend service on Render (Docker, root directory `backend/insights_function`)
 - [ ] Set backend env vars: `JWT_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `TOKEN_EXPIRE_MINUTES`
+- [ ] (Optional cloud DB) Set `DATABASE_URL` for hosted Postgres
 - [ ] Copy backend URL (example: `https://your-service.onrender.com`)
 - [ ] Add GitHub secret `REACT_APP_API_BASE_URL` with backend URL
 - [ ] Enable GitHub Pages source as **GitHub Actions**
@@ -33,6 +34,7 @@ If you want the shortest path, do this:
   - `ADMIN_USERNAME`
   - `ADMIN_PASSWORD`
   - `TOKEN_EXPIRE_MINUTES=60`
+  - `DATABASE_URL` (optional cloud Postgres URL; if omitted, SQLite is used)
 3. Copy your backend URL (example: `https://your-service.onrender.com`).
 4. In GitHub repo secrets, create `REACT_APP_API_BASE_URL` with that backend URL.
 5. Enable GitHub Pages with **GitHub Actions**.
@@ -59,6 +61,53 @@ Optional but recommended:
 
 > Do this first because frontend needs the backend URL.
 
+## 2.0 Cloud database (required for persistent hosted data)
+
+If you want hosted persistent telemetry (recommended), set up a free Postgres DB first.
+
+### Option A: Neon (free tier)
+
+1. Create account at Neon and create a new project.
+2. Open project dashboard and copy the connection string.
+3. Convert it to SQLAlchemy format if needed:
+  - from: `postgresql://user:pass@host/db`
+  - to: `postgresql+psycopg://user:pass@host/db`
+4. Save this as your `DATABASE_URL` value.
+
+#### Neon form setup (recommended values for this app)
+
+When Neon asks for project options:
+
+- **Project name**: `vendinsights` (or any name you prefer)
+- **Postgres version**: `17` (good default; supported by SQLAlchemy/psycopg)
+- **Cloud service provider**: `AWS` (recommended if backend is on Render)
+- **Region**: choose the closest region to your backend host
+  - if your Render service is US East, pick **AWS US East 1 (N. Virginia)**
+- **Enable Neon Auth**: **No / disabled**
+
+Why disable Neon Auth here:
+- This app already has backend auth via `POST /api/login` and JWT.
+- Enabling Neon Auth adds a second auth system you are not using now.
+
+### Option B: Supabase (free tier)
+
+1. Create project in Supabase.
+2. Go to Database settings and copy the Postgres connection string.
+3. Use SQLAlchemy format:
+  - `postgresql+psycopg://user:pass@host:5432/postgres`
+4. Save this as your `DATABASE_URL` value.
+
+### Which should you pick? (Neon vs Supabase)
+
+Recommended for this project now: **Neon**.
+
+- Pick **Neon** when you only need managed Postgres for this FastAPI backend.
+- Pick **Supabase** if you also want extra platform features soon (built-in auth, storage, realtime APIs).
+
+For current app scope (DB-only persistence + free tier): Neon is simpler.
+
+If `DATABASE_URL` is NOT set, backend falls back to local SQLite. That is fine for local development, but not ideal for long-term hosted persistence.
+
 ### 2.1 Create the web service
 
 1. Go to Render dashboard → **New +** → **Web Service**.
@@ -80,6 +129,17 @@ In Render service settings → **Environment**:
 - `ADMIN_PASSWORD` = your login password (or bcrypt hash)
 - `TOKEN_EXPIRE_MINUTES` = `60`
 - `ALLOWED_ORIGINS` = your GitHub Pages URL (set in section 3)
+- `DATABASE_URL` = optional Postgres URL (Neon/Supabase free tiers)
+- `AUTO_SEED_DATA` = optional (`true` by default)
+- `SEED_MACHINES` = optional (`5` by default)
+- `SEED_HOURS` = optional (`336` by default)
+
+Recommended hosted values:
+
+- `DATABASE_URL=postgresql+psycopg://...`
+- `AUTO_SEED_DATA=true`
+- `SEED_MACHINES=10`
+- `SEED_HOURS=720`
 
 Save changes and redeploy if prompted.
 
@@ -99,6 +159,21 @@ Invoke-RestMethod -Method Post -Uri "https://your-service-name.onrender.com/api/
 ```
 
 Expected: JSON with `access_token`.
+
+### 2.4 Confirm backend is using cloud database
+
+After first login + KPI request from frontend:
+
+1. Open your Neon/Supabase SQL editor.
+2. Run:
+
+```sql
+select count(*) as telemetry_rows from telemetry_events;
+```
+
+Expected: a number greater than 0.
+
+If this stays 0, your backend may not be using the intended `DATABASE_URL`.
 
 ---
 
@@ -174,6 +249,43 @@ Invoke-RestMethod -Method Get -Uri "https://your-service-name.onrender.com/api/k
 ```
 
 Expected: KPI JSON payload.
+
+### 5.3 DB verification (cloud persistence)
+
+1. Call `/api/kpis` at least once.
+2. Re-run SQL query in your cloud DB:
+
+```sql
+select count(*) as telemetry_rows from telemetry_events;
+```
+
+3. Confirm row count exists and does not reset unexpectedly.
+
+### 5.4 Reseed simulation data (replace-all, no growth)
+
+Use this when you want a fresh simulation dataset without increasing DB size.
+
+PowerShell:
+
+```powershell
+$BackendUrl = "https://YOUR-BACKEND-URL"
+$Username = "YOUR_ADMIN_USERNAME"
+$Password = "YOUR_ADMIN_PASSWORD"
+
+# Login
+$loginBody = @{ username = $Username; password = $Password } | ConvertTo-Json
+$login = Invoke-RestMethod -Method Post -Uri "$BackendUrl/api/login" -ContentType "application/json" -Body $loginBody
+
+# Reseed (replaces all telemetry rows)
+$headers = @{ Authorization = "Bearer $($login.access_token)" }
+Invoke-RestMethod -Method Post -Uri "$BackendUrl/api/reseed?machines=10&hours=720" -Headers $headers
+```
+
+Notes:
+
+- `machines=10&hours=720` means 10 machines x 720 hourly points (~30 days).
+- This endpoint replaces existing telemetry rows, so DB size remains bounded.
+- Run this endpoint after deploy whenever you want a new simulation dataset.
 
 ---
 

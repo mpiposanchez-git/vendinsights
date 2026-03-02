@@ -13,8 +13,9 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 import os
 
-# use fully qualified package import so uvicorn launched from the
-# repository root can locate the modules correctly.
+# Use fully qualified package import so uvicorn launched from the repository
+# root can locate modules correctly. Fall back to local imports only when the
+# package path itself is unavailable.
 try:
     from backend.insights_function.kpi_calculations import (
         revenue_per_week,
@@ -26,7 +27,21 @@ try:
         active_machines,
         revenue_by_hour,
     )
-except ModuleNotFoundError:
+    from backend.insights_function.database import (
+        count_events,
+        create_tables,
+        fetch_recent_docs,
+        insert_telemetry_docs,
+        replace_telemetry_docs,
+    )
+except ModuleNotFoundError as exc:
+    if exc.name not in {
+        "backend",
+        "backend.insights_function.kpi_calculations",
+        "backend.insights_function.database",
+    }:
+        raise
+
     from kpi_calculations import (
         revenue_per_week,
         units_sold_per_slot,
@@ -36,6 +51,13 @@ except ModuleNotFoundError:
         payment_error_rate,
         active_machines,
         revenue_by_hour,
+    )
+    from database import (
+        count_events,
+        create_tables,
+        fetch_recent_docs,
+        insert_telemetry_docs,
+        replace_telemetry_docs,
     )
 
 import random
@@ -86,7 +108,17 @@ class TokenResponse(BaseModel):
     expires_in: int
 
 
+class ReseedResponse(BaseModel):
+    inserted_rows: int
+    total_rows: int
+    machines: int
+    hours: int
+
+
 SLOTS = ["A", "B", "C", "D"]
+AUTO_SEED_DATA = os.getenv("AUTO_SEED_DATA", "true").lower() == "true"
+SEED_MACHINES = int(os.getenv("SEED_MACHINES", "5"))
+SEED_HOURS = int(os.getenv("SEED_HOURS", "336"))
 
 
 def generate_docs(num_machines: int, hours: int) -> Iterator[dict]:
@@ -104,7 +136,7 @@ def generate_docs(num_machines: int, hours: int) -> Iterator[dict]:
             for slot, qty in sold.items():
                 inventory[slot] = max(inventory.get(slot, 0) - qty, 0)
             doc = {
-                "timestamp": timestamp.isoformat() + "Z",
+                "timestamp": timestamp.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
                 "deviceId": device_id,
                 "inventory": dict(inventory),
                 "sales": {
@@ -115,6 +147,16 @@ def generate_docs(num_machines: int, hours: int) -> Iterator[dict]:
                 "payment_status": random.choice(["ok"] * 95 + ["error"] * 5),
             }
             yield doc
+
+
+def ensure_seeded_data() -> None:
+    """Create DB tables and seed synthetic telemetry if storage is empty."""
+    create_tables()
+    if not AUTO_SEED_DATA:
+        return
+
+    if count_events() == 0:
+        insert_telemetry_docs(generate_docs(SEED_MACHINES, SEED_HOURS))
 
 
 def verify_password(plain_password: str) -> bool:
@@ -169,8 +211,16 @@ def login(payload: LoginRequest):
 
 @app.get("/api/kpis", response_model=KPIResponse)
 def get_kpis(machines: int = 3, hours: int = 168, _: str = Depends(require_user)):
-    """Return computed KPI payload for the requested synthetic time window."""
-    docs = list(generate_docs(machines, hours))
+    """Return computed KPI payload sourced from persisted telemetry records."""
+    ensure_seeded_data()
+    docs = fetch_recent_docs(hours=hours, machines=machines)
+
+    if not docs:
+        # Fail-safe for brand-new databases where seeding is disabled.
+        seed_docs = list(generate_docs(max(1, machines), max(1, hours)))
+        insert_telemetry_docs(seed_docs)
+        docs = fetch_recent_docs(hours=hours, machines=machines)
+
     mean_stdev = temperature_stats(docs) or (None, None)
     return {
         "revenue_per_week": revenue_per_week(docs),
@@ -182,4 +232,19 @@ def get_kpis(machines: int = 3, hours: int = 168, _: str = Depends(require_user)
         "payment_error_rate": payment_error_rate(docs),
         "active_machines": active_machines(docs),
         "revenue_by_hour": revenue_by_hour(docs),
+    }
+
+
+@app.post("/api/reseed", response_model=ReseedResponse)
+def reseed_data(machines: int = 5, hours: int = 336, _: str = Depends(require_user)):
+    """Replace telemetry dataset with a new simulated batch (no DB growth)."""
+    safe_machines = max(1, machines)
+    safe_hours = max(1, hours)
+    inserted = replace_telemetry_docs(generate_docs(safe_machines, safe_hours))
+    total = count_events()
+    return {
+        "inserted_rows": inserted,
+        "total_rows": total,
+        "machines": safe_machines,
+        "hours": safe_hours,
     }

@@ -12,12 +12,12 @@ A comprehensive telemetry collection, processing, and analysis platform for vend
 - **Visualizes insights** through an interactive React dashboard showing metrics, trends, and anomalies
 - **Simulates telemetry** for testing and demo purposes without physical machines
 
-The platform is designed to scale from prototype to production, with containerized backend functions deployable to Azure, a responsive React frontend for analytics, and comprehensive CI/CD pipelines.
+The platform is designed to scale from prototype to production, with a containerized backend, a responsive React frontend for analytics, and CI/CD workflows.
 
 ## Docs Index
 
-- `FREE_TIER_DEPLOYMENT_GUIDE.md` - full step-by-step deployment guide (Render + GitHub Pages)
-- `FREE_TIER_DEPLOYMENT_QUICK.md` - one-page fast deployment version
+- `docs/FREE_TIER_DEPLOYMENT_GUIDE.md` - full step-by-step deployment guide (Render + GitHub Pages)
+- `docs/FREE_TIER_DEPLOYMENT_QUICK.md` - one-page fast deployment version
 - `docs/architecture-decisions.md` - human-readable ADR-style architecture decisions
 - `decision_log.json` - machine-readable comprehensive decision log
 
@@ -113,11 +113,14 @@ The project is organized as a lightweight full-stack analytics system:
   - exposes `POST /api/login` (JWT token issuance)
   - exposes protected `GET /api/kpis` endpoint
   - applies CORS settings from `ALLOWED_ORIGINS`
-  - generates synthetic data in-memory (for demo/development mode)
+  - reads telemetry from database and computes KPIs from persisted records
 - `kpi_calculations.py`
   - computes revenue, units sold, stockout events, average transaction value
   - computes temperature statistics and payment error rate
   - computes active machine count and time-series revenue by hour
+- `database.py`
+  - creates DB tables and stores telemetry events
+  - supports local SQLite by default and cloud Postgres via `DATABASE_URL`
 - `requirements.txt`
   - includes FastAPI, Uvicorn, auth libraries, and test dependencies
 
@@ -166,10 +169,9 @@ The project is organized as a lightweight full-stack analytics system:
 ### Data Flow
 
 1. **Telemetry Generation**: Vending machines send JSON telemetry (sales, inventory, temperature, etc.)
-2. **Ingestion**: Messages arrive via Azure messaging or simulator
-3. **Aggregation**: Data is aggregated by machine and time period
-4. **Processing**: KPIs are computed in real-time
-5. **Visualization**: React frontend fetches metrics and displays interactive charts
+2. **Persistence**: Telemetry is stored in the database (`telemetry_events` table)
+3. **Processing**: KPI helpers read persisted telemetry and compute metrics
+4. **Visualization**: React frontend fetches protected metrics and displays charts
 
 ## Core KPIs
 
@@ -187,7 +189,14 @@ This generates 5 days of telemetry data across 5 simulated machines. Adjust `--m
 
 ### Backend API
 
-The backend exposes a FastAPI server with `POST /api/login` and protected `GET /api/kpis`. By default it generates three machines worth of hourly data for the past week.
+The backend exposes a FastAPI server with `POST /api/login` and protected `GET /api/kpis`.
+`/api/kpis` reads from database storage. If the database is empty, the app auto-seeds
+it with simulated telemetry (configurable via env vars).
+
+Database behavior:
+
+- Default (no `DATABASE_URL`): local SQLite file at `backend/insights_function/vendinsights.db`
+- Cloud mode (`DATABASE_URL` set): uses your hosted Postgres database (Neon/Supabase free tiers work)
 
 **Running the backend manually:**
 
@@ -293,6 +302,10 @@ If you want a zero-cost setup (within free quotas):
   - `ADMIN_PASSWORD` = login password for dashboard
   - `TOKEN_EXPIRE_MINUTES` = token duration (optional, default `60`)
   - `ALLOWED_ORIGINS` = your GitHub Pages origin (optional, comma-separated)
+  - `DATABASE_URL` = optional cloud database URL (Postgres). If omitted, SQLite is used.
+  - `AUTO_SEED_DATA` = `true`/`false` (optional, default `true`)
+  - `SEED_MACHINES` = initial seeded machine count (optional, default `5`)
+  - `SEED_HOURS` = seeded hours per machine (optional, default `336`)
 
 4. **Login flow**
   - Frontend calls `POST /api/login` with username/password.

@@ -68,14 +68,15 @@ It captures the core decisions needed to reproduce the current app behavior from
 **Why**
 - Easiest local setup + safer production option.
 
-## ADR-006: Synthetic telemetry first
+## ADR-006: Persist telemetry in database (seeded by simulation)
 
 **Decision**
-- Generate telemetry in backend runtime (`generate_docs`) and in simulator script.
+- Store telemetry in a database table and compute KPIs from persisted records.
+- Seed data from simulation when the database is empty.
 
 **Why**
-- No external data system required for MVP.
-- Deterministic way to demo and test behavior.
+- Enables real persistence and cloud DB integration while keeping MVP setup simple.
+- Keeps free local mode working via SQLite fallback.
 
 ## ADR-007: KPI engine in dedicated module
 
@@ -193,6 +194,7 @@ It captures the core decisions needed to reproduce the current app behavior from
 - `ADMIN_PASSWORD`
 - `TOKEN_EXPIRE_MINUTES`
 - `ALLOWED_ORIGINS`
+- `DATABASE_URL` (optional; if omitted, SQLite is used)
 
 ## ADR-019: CORS origin rule
 
@@ -204,7 +206,7 @@ It captures the core decisions needed to reproduce the current app behavior from
 
 ## 8. Known Tradeoffs and Next Decisions
 
-- No persistent database yet (runtime synthetic data only).
+- Persistent telemetry is available, but advanced ingestion pipelines are still pending.
 - Placeholder services are not implemented yet.
 - CI currently allows some steps to continue on lint/test failure (`|| true`), which is useful for iteration but weak for strict release gating.
 
@@ -212,7 +214,7 @@ It captures the core decisions needed to reproduce the current app behavior from
 
 1. Build FastAPI auth + protected KPI API.
 2. Implement KPI math module.
-3. Add synthetic telemetry generator.
+3. Add telemetry persistence layer (SQLite default + optional Postgres via `DATABASE_URL`).
 4. Build React login + KPI table + charts.
 5. Add API client with env-based base URL.
 6. Add local launcher with `.env` support.
