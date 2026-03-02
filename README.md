@@ -102,9 +102,8 @@ The project is organized as a lightweight full-stack analytics system:
 - `simulator/` - telemetry generator script for synthetic device data
 - `scripts/` - troubleshooting utilities (connectivity checks)
 - `run_local.py` - one-command local launcher for backend + frontend
-- `.github/workflows/` - CI, Pages deploy, and Azure Static Web Apps workflow files
-- `azure-pipelines.yml` - Azure DevOps pipeline placeholder
-- `decision_log.json` - currently empty (reserved for architecture decisions)
+- `.github/workflows/` - CI and GitHub Pages deployment workflows
+- `decision_log.json` - machine-readable architecture and implementation decisions
 
 ## Repository Walkthrough
 
@@ -270,7 +269,7 @@ Built with React, Recharts for visualization, and CSS for responsive design.
 
 ## Deployment
 
-Deploy containerized functions to Azure using Azure DevOps, Docker, and the provided Bicep/Terraform infrastructure templates. See `azure-pipelines.yml` and `.github/workflows/ci.yml` for CI/CD configuration.
+Deploy the frontend with GitHub Pages and deploy the backend container to a free host (Render or Koyeb). CI and build checks are defined in `.github/workflows/ci.yml`.
 
 ### Free-tier deployment (frontend + protected access)
 
@@ -321,10 +320,6 @@ docker build -t vendinsights/insights:latest backend/insights_function
 docker build -t vendinsights/aggregate:latest backend/aggregate_function
 docker build -t vendinsights/ingest:latest backend/ingest_function
 ```
-
-### Azure Deployment
-
-Use Azure DevOps or GitHub Actions to automatically build and deploy. The CI/CD pipeline runs tests, builds containers, and pushes to your Azure Container Registry.
 
 ## Contributing
 
