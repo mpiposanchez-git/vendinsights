@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Decision Log: Generate Markdown",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "scripts/generate_decision_log_markdown.py"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Decision Log: Check Sync",
+      "type": "shell",
+      "command": "python scripts/generate_decision_log_markdown.py; git diff --exit-code -- docs/decision_log.md",
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

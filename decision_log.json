@@ -325,6 +325,9 @@
 					"ADMIN_PASSWORD",
 					"TOKEN_EXPIRE_MINUTES",
 					"ALLOWED_ORIGINS"
+				],
+				"optional_env": [
+					"DATABASE_URL"
 				]
 			}
 		},
@@ -389,6 +392,223 @@
 			"ADMIN_PASSWORD",
 			"TOKEN_EXPIRE_MINUTES",
 			"ALLOWED_ORIGINS"
+		],
+		"optional_env_for_hosted_backend": [
+			"DATABASE_URL"
+		]
+	},
+	"architecture_adr_companion": {
+		"source_file": "decision_log.json",
+		"purpose": "Human-readable ADR companion mirrored into this JSON to keep a single source of truth.",
+		"last_synced": "2026-03-02",
+		"product_scope": [
+			"Build a vending-machine monitoring app that computes and displays operational KPIs.",
+			"Keep deployment cost at zero/free tier.",
+			"Ensure local startup is simple for non-expert users."
+		],
+		"adr_index": [
+			{
+				"adr_id": "ADR-001",
+				"title": "Split frontend and backend",
+				"mapped_decision_ids": [
+					"A-001"
+				]
+			},
+			{
+				"adr_id": "ADR-002",
+				"title": "Keep future microservice placeholders",
+				"mapped_decision_ids": [
+					"A-002"
+				]
+			},
+			{
+				"adr_id": "ADR-003",
+				"title": "FastAPI as backend framework",
+				"mapped_decision_ids": [
+					"B-001"
+				]
+			},
+			{
+				"adr_id": "ADR-004",
+				"title": "Token-based auth with JWT",
+				"mapped_decision_ids": [
+					"B-002",
+					"B-003",
+					"B-005",
+					"S-001",
+					"S-002"
+				],
+				"env_vars": [
+					"JWT_SECRET",
+					"TOKEN_EXPIRE_MINUTES",
+					"ADMIN_USERNAME",
+					"ADMIN_PASSWORD"
+				]
+			},
+			{
+				"adr_id": "ADR-005",
+				"title": "Support plaintext and bcrypt passwords",
+				"mapped_decision_ids": [
+					"B-004"
+				]
+			},
+			{
+				"adr_id": "ADR-006",
+				"title": "Persist telemetry in database (seeded by simulation)",
+				"mapped_decision_ids": [
+					"A-003"
+				]
+			},
+			{
+				"adr_id": "ADR-007",
+				"title": "KPI engine in dedicated module",
+				"mapped_decision_ids": [
+					"B-007",
+					"B-008"
+				],
+				"kpi_set": [
+					"Revenue per week",
+					"Units sold per slot",
+					"Stockout events",
+					"Average transaction value",
+					"Temperature mean/stdev",
+					"Payment error rate",
+					"Active machines",
+					"Revenue by hour"
+				]
+			},
+			{
+				"adr_id": "ADR-008",
+				"title": "React SPA with charting",
+				"mapped_decision_ids": [
+					"F-001",
+					"F-005"
+				]
+			},
+			{
+				"adr_id": "ADR-009",
+				"title": "Login-gated UI",
+				"mapped_decision_ids": [
+					"F-002",
+					"F-003"
+				]
+			},
+			{
+				"adr_id": "ADR-010",
+				"title": "Configurable API base URL + fallback mode",
+				"mapped_decision_ids": [
+					"F-004"
+				]
+			},
+			{
+				"adr_id": "ADR-011",
+				"title": "GitHub Pages path compatibility",
+				"mapped_decision_ids": [
+					"F-006"
+				]
+			},
+			{
+				"adr_id": "ADR-012",
+				"title": "One-command local startup",
+				"mapped_decision_ids": [
+					"D-001",
+					"D-002",
+					"D-003",
+					"D-004"
+				]
+			},
+			{
+				"adr_id": "ADR-013",
+				"title": "Keep secrets local and safe",
+				"mapped_decision_ids": [
+					"C-002",
+					"D-005"
+				]
+			},
+			{
+				"adr_id": "ADR-014",
+				"title": "Backend tests with pytest",
+				"mapped_decision_ids": [
+					"T-001"
+				]
+			},
+			{
+				"adr_id": "ADR-015",
+				"title": "Frontend tests with RTL + JSDOM shims",
+				"mapped_decision_ids": [
+					"T-002",
+					"T-003"
+				]
+			},
+			{
+				"adr_id": "ADR-016",
+				"title": "Keep test output readable",
+				"mapped_decision_ids": [
+					"T-004"
+				]
+			},
+			{
+				"adr_id": "ADR-017",
+				"title": "Frontend deploy target = GitHub Pages",
+				"mapped_decision_ids": [
+					"P-001"
+				]
+			},
+			{
+				"adr_id": "ADR-018",
+				"title": "Backend deploy target = free container host",
+				"mapped_decision_ids": [
+					"P-002"
+				],
+				"required_env_for_hosted_backend": [
+					"JWT_SECRET",
+					"ADMIN_USERNAME",
+					"ADMIN_PASSWORD",
+					"TOKEN_EXPIRE_MINUTES",
+					"ALLOWED_ORIGINS"
+				],
+				"optional_env_for_hosted_backend": [
+					"DATABASE_URL"
+				]
+			},
+			{
+				"adr_id": "ADR-019",
+				"title": "CORS origin rule",
+				"mapped_decision_ids": [
+					"P-003"
+				]
+			},
+			{
+				"adr_id": "ADR-020",
+				"title": "Local-first Lumo+ strategist",
+				"mapped_decision_ids": [
+					"B-009",
+					"F-007"
+				],
+				"response_sections": [
+					"highlights",
+					"risks",
+					"business_strategies",
+					"machine_expansion_signal"
+				]
+			}
+		],
+		"known_tradeoffs": [
+			"Persistent telemetry is available, but advanced ingestion pipelines are still pending.",
+			"Placeholder services are not implemented yet.",
+			"CI currently allows some steps to continue on lint/test failure ('|| true'), which is useful for iteration but weak for strict release gating."
+		],
+		"rebuild_blueprint_condensed": [
+			"Build FastAPI auth + protected KPI API.",
+			"Implement KPI math module.",
+			"Add telemetry persistence layer (SQLite default + optional Postgres via DATABASE_URL).",
+			"Build React login + KPI table + charts.",
+			"Add API client with env-based base URL.",
+			"Add local launcher with .env support.",
+			"Add backend/frontend tests.",
+			"Configure GitHub Pages frontend workflow.",
+			"Deploy backend container on free host.",
+			"Set env vars and CORS, then validate end-to-end login + KPI flow."
 		]
 	},
 	"known_limitations_and_next_decisions": [
@@ -417,5 +637,46 @@
 			"limitation": "Local strategist is heuristic-based and does not yet learn from user feedback loops.",
 			"next_decision_needed": "Add feedback capture and periodic strategy tuning for higher recommendation precision."
 		}
-	]
+	],
+	"manchester_pilot_decision_log": {
+		"project": {
+			"name": "Manchester Vending‑Machine Pilot"
+		},
+		"future_entries_note": "Future entries (e.g., electrician hired, machine installed, first‑month performance) go here.",
+		"log": [
+			{
+				"id": "LOC-001",
+				"date": "2026-03-02",
+				"category": "location_selection",
+				"decision": "Initial assessment of three candidate sites (Gym, University Hall, Transport Hub).",
+				"rationale": "Compare foot‑traffic, permission hurdles, refrigeration needs, electrician cost, revenue potential, and risk.",
+				"outcome": "Prepared parallel checklists – see assessment table.",
+				"stakeholder": "Founder",
+				"estimated_impact": "Identify highest‑ROI site for Phase‑1 deployment.",
+				"risk": "Medium – depends on securing licences and electrical approval."
+			},
+			{
+				"id": "FIN-001",
+				"date": "2026-03-02",
+				"category": "budget",
+				"decision": "Allocate contingency and marketing budgets per venue.",
+				"rationale": "Prevent cash‑flow stalls during rollout.",
+				"outcome": null,
+				"stakeholder": "Founder / Accountant",
+				"estimated_impact": "Maintain financial flexibility.",
+				"risk": "Low"
+			},
+			{
+				"id": "PUR-001",
+				"date": "2026-03-05",
+				"category": "procurement",
+				"decision": "Selected **new** dual‑zone vending machine with built‑in EMV contactless reader and native MQTT telemetry.",
+				"rationale": "Ease of integration, 2‑year warranty, fits budget while leaving room for electrician, contingency, and marketing.",
+				"outcome": null,
+				"stakeholder": "Founder",
+				"estimated_impact": "Projected £4 500‑£6 500 monthly gross (gym scenario) once live.",
+				"risk": "Low – supplier reputable, warranty covers early failures."
+			}
+		]
+	}
 }

@@ -19,8 +19,54 @@ The platform is designed to scale from prototype to production, with a container
 
 - `docs/FREE_TIER_DEPLOYMENT_GUIDE.md` - full step-by-step deployment guide (Render + GitHub Pages)
 - `docs/FREE_TIER_DEPLOYMENT_QUICK.md` - one-page fast deployment version
-- `docs/architecture-decisions.md` - human-readable ADR-style architecture decisions
-- `decision_log.json` - machine-readable comprehensive decision log
+- `decision_log.json` - single source of truth for architecture and implementation decisions
+- `docs/decision_log.md` - auto-generated reader-friendly decision report from `decision_log.json`
+
+## Decision Log Auto-Sync
+
+The repository includes an auto-generated Markdown view of decisions:
+
+- Source: `decision_log.json`
+- Generated file: `docs/decision_log.md`
+- Generator: `scripts/generate_decision_log_markdown.py`
+
+### Automatic updates
+
+- **On GitHub**: workflow `.github/workflows/sync-decision-log-docs.yml` regenerates and commits `docs/decision_log.md` whenever `decision_log.json` changes on `main`.
+- **In CI**: workflow `.github/workflows/ci.yml` verifies the generated doc is in sync.
+- **Locally (optional)**: install pre-commit once to auto-regenerate before commits:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+### One-command local regeneration
+
+From the repo root:
+
+```bash
+make decision-log-docs
+```
+
+Consistency check target:
+
+```bash
+make check-decision-log-docs
+```
+
+On Windows without `make`, use:
+
+```bash
+python scripts/generate_decision_log_markdown.py
+```
+
+### VS Code tasks
+
+You can run the same commands from VS Code:
+
+- `Terminal: Run Task` → `Decision Log: Generate Markdown`
+- `Terminal: Run Task` → `Decision Log: Check Sync`
 
 ## Quick Start
 
@@ -82,7 +128,7 @@ Use this script before disabling any VPN or firewall rules.
 ## Architecture & Structure
 
 For a detailed rationale behind technical choices, see
-`docs/architecture-decisions.md` and `decision_log.json`.
+`decision_log.json`.
 
 The project is organized as a lightweight full-stack analytics system:
 

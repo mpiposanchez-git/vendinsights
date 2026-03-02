@@ -1,0 +1,40 @@
+name: Sync decision log docs
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - decision_log.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate docs/decision_log.md
+        run: python scripts/generate_decision_log_markdown.py
+
+      - name: Commit and push if changed
+        run: |
+          if git diff --quiet -- docs/decision_log.md; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/decision_log.md
+          git commit -m "chore: sync decision log markdown"
+          git push

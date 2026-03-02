@@ -21,6 +21,10 @@ jobs:
           for req in backend/*/requirements.txt; do
             [ -f "$req" ] && pip install -r "$req" || true
           done
+      - name: Verify decision log docs are in sync
+        run: |
+          python scripts/generate_decision_log_markdown.py
+          git diff --exit-code -- docs/decision_log.md
       - name: Lint backend
         run: |
           pip install flake8

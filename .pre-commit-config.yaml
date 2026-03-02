@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: generate-decision-log-markdown
+        name: Generate decision log markdown
+        entry: python scripts/generate_decision_log_markdown.py
+        language: system
+        pass_filenames: false
+        files: ^decision_log\.json$
