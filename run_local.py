@@ -6,6 +6,9 @@ browser to the UI.  Works on Windows (PowerShell) and any platform where
 
 Usage:  `python run_local.py`
 
+Optional: create a `.env` file in the repository root to set runtime values
+such as `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
+
 The script will:
 
 * create/activate a virtual environment for the backend if necessary
@@ -14,9 +17,9 @@ The script will:
 * run `npm install` automatically if the `frontend/node_modules` folder is
   missing
 * launch `npm start` in the frontend folder (will fall back to opening the
-  backend endpoint if npm is unavailable or fails)
-* open the frontend (`http://localhost:3000`) or, when the frontend isn't
-  running, open the backend `/api/kpis` URL directly
+    backend docs endpoint if npm is unavailable or fails)
+* open the frontend (`http://localhost:3000/vendinsights`) or, when the frontend isn't
+    running, open the backend `/docs` URL directly
 
 A helper script `scripts/check_connectivity.py` can be used to diagnose
 networking issues such as VPN/firewall blocks to localhost.
@@ -35,9 +38,37 @@ import urllib.error
 ROOT = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.join(ROOT, 'backend', 'insights_function')
 FRONTEND_DIR = os.path.join(ROOT, 'frontend')
+FRONTEND_URL = 'http://localhost:3000/vendinsights'
 
 VENV_DIR = os.path.join(BACKEND_DIR, '.venv')
 PYTHON = None
+
+
+def load_local_env() -> None:
+    """Load key/value pairs from `<repo>/.env` into process environment.
+
+    Existing environment variables are preserved (not overwritten).
+    Lines starting with `#` are treated as comments.
+    """
+    env_path = os.path.join(ROOT, '.env')
+    if not os.path.isfile(env_path):
+        return
+
+    print('Loading environment variables from .env ...')
+    with open(env_path, 'r', encoding='utf-8') as env_file:
+        for raw_line in env_file:
+            line = raw_line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' not in line:
+                continue
+
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+
+            if key and key not in os.environ:
+                os.environ[key] = value
 
 
 def ensure_backend_env():
@@ -92,7 +123,10 @@ def start_frontend():
             return None
 
     try:
-        proc = subprocess.Popen([npm_path, 'start'], cwd=FRONTEND_DIR)
+        frontend_env = os.environ.copy()
+        # Prevent react-scripts from opening an extra browser tab.
+        frontend_env['BROWSER'] = 'none'
+        proc = subprocess.Popen([npm_path, 'start'], cwd=FRONTEND_DIR, env=frontend_env)
     except FileNotFoundError:
         print("npm not found; please install Node.js and run 'npm start' manually in the frontend folder.")
         return None
@@ -101,9 +135,10 @@ def start_frontend():
 
 def main():
     """Orchestrate backend/frontend startup and graceful shutdown."""
+    load_local_env()
     ensure_backend_env()
     backend_proc = start_backend()
-    # wait for backend to accept connections (poll `/api/kpis`)
+    # wait for backend to accept connections using an unauthenticated endpoint
     def wait_for_backend(url: str, timeout: int = 10) -> bool:
         """Poll an HTTP endpoint until success or timeout."""
         deadline = time.time() + timeout
@@ -115,18 +150,18 @@ def main():
                 time.sleep(0.5)
         return False
 
-    backend_ready = wait_for_backend('http://127.0.0.1:8000/api/kpis', timeout=10)
+    backend_ready = wait_for_backend('http://127.0.0.1:8000/docs', timeout=10)
 
     # if frontend cannot start due to missing npm, open backend URL instead
     try:
-        webbrowser.open('http://localhost:3000')
+        webbrowser.open(FRONTEND_URL)
     except Exception:
         pass
     frontend_proc = start_frontend()
     if frontend_proc is None:
-        print('opening backend KPI endpoint in browser instead')
-        # prefer the API route (/api/kpis) which is the served endpoint
-        webbrowser.open('http://localhost:8000/api/kpis')
+        print('opening backend docs endpoint in browser instead')
+        # `/docs` is unauthenticated and gives a friendly API landing page.
+        webbrowser.open('http://localhost:8000/docs')
     else:
         # if frontend didn't come up but backend is ready, open backend API
         if not backend_ready:

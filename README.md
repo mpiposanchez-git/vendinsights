@@ -47,6 +47,10 @@ The script now automatically runs `npm install` in the `frontend/` directory whe
 `node_modules` are absent and will fall back to the API URL if the frontend
 fails to start or npm isn't installed.
 
+For easiest local login setup, copy `.env.example` to `.env` and edit
+`ADMIN_USERNAME` / `ADMIN_PASSWORD` once. `run_local.py` automatically loads
+values from `.env`.
+
 #### Connectivity diagnostics
 
 If you run into problems contacting the backend (e.g. "connection refused" or a
