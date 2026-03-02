@@ -1,0 +1,20 @@
+{
+  "files": {
+    "main.css": "/vendinsights/static/css/main.ad400193.chunk.css",
+    "main.js": "/vendinsights/static/js/main.ad474c49.chunk.js",
+    "main.js.map": "/vendinsights/static/js/main.ad474c49.chunk.js.map",
+    "runtime-main.js": "/vendinsights/static/js/runtime-main.a535bda5.js",
+    "runtime-main.js.map": "/vendinsights/static/js/runtime-main.a535bda5.js.map",
+    "static/js/2.04832c77.chunk.js": "/vendinsights/static/js/2.04832c77.chunk.js",
+    "static/js/2.04832c77.chunk.js.map": "/vendinsights/static/js/2.04832c77.chunk.js.map",
+    "index.html": "/vendinsights/index.html",
+    "static/css/main.ad400193.chunk.css.map": "/vendinsights/static/css/main.ad400193.chunk.css.map",
+    "static/js/2.04832c77.chunk.js.LICENSE.txt": "/vendinsights/static/js/2.04832c77.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.a535bda5.js",
+    "static/js/2.04832c77.chunk.js",
+    "static/css/main.ad400193.chunk.css",
+    "static/js/main.ad474c49.chunk.js"
+  ]
+}
