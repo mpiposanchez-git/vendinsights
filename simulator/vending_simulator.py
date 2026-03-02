@@ -20,6 +20,7 @@ SLOTS = ["A", "B", "C", "D"]
 
 def generate_docs(num_machines: int, hours: int) -> Iterator[dict]:
     """Yield `hours` telemetry points per machine."""
+    # Start `hours` in the past so generated points look like realistic history.
     start = datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
     for m in range(num_machines):
         device_id = f"machine-{m+1}"
@@ -45,6 +46,7 @@ def generate_docs(num_machines: int, hours: int) -> Iterator[dict]:
 
 
 def run() -> None:
+    """Parse command-line arguments and print JSONL telemetry to stdout."""
     parser = argparse.ArgumentParser(description="Run vending telemetry simulator")
     parser.add_argument("--machines", type=int, default=3, help="number of devices")
     parser.add_argument("--hours", type=int, default=168, help="hours of data to emit")

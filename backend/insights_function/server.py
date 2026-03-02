@@ -1,3 +1,9 @@
+"""FastAPI service that exposes authentication and KPI endpoints.
+
+This file is the runtime heart of the demo backend. It uses synthetic data so
+the app works locally without external databases.
+"""
+
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -36,7 +42,7 @@ import random
 import datetime
 from typing import Iterator, Any
 
-app = FastAPI()
+app = FastAPI(title="Vending Insights API")
 
 
 ALGORITHM = "HS256"
@@ -84,6 +90,10 @@ SLOTS = ["A", "B", "C", "D"]
 
 
 def generate_docs(num_machines: int, hours: int) -> Iterator[dict]:
+    """Generate synthetic telemetry documents.
+
+    Each yielded document mimics one hourly snapshot for one vending machine.
+    """
     start = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours)
     for m in range(num_machines):
         device_id = f"machine-{m+1}"
@@ -108,12 +118,19 @@ def generate_docs(num_machines: int, hours: int) -> Iterator[dict]:
 
 
 def verify_password(plain_password: str) -> bool:
+    """Validate plaintext password against configured admin credential.
+
+    Supports either:
+    - plaintext ADMIN_PASSWORD (local demo convenience)
+    - bcrypt-hashed ADMIN_PASSWORD (production-safe approach)
+    """
     if ADMIN_PASSWORD.startswith("$2"):
         return pwd_context.verify(plain_password, ADMIN_PASSWORD)
     return plain_password == ADMIN_PASSWORD
 
 
 def create_access_token(username: str) -> str:
+    """Create a signed JWT token for authenticated API access."""
     now = datetime.datetime.now(datetime.timezone.utc)
     expires_at = now + datetime.timedelta(minutes=TOKEN_EXPIRE_MINUTES)
     payload = {
@@ -125,6 +142,7 @@ def create_access_token(username: str) -> str:
 
 
 def require_user(credentials: HTTPAuthorizationCredentials = Depends(auth_scheme)) -> str:
+    """Dependency that blocks requests without a valid bearer token."""
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[ALGORITHM])
         username = payload.get("sub")
@@ -137,6 +155,7 @@ def require_user(credentials: HTTPAuthorizationCredentials = Depends(auth_scheme
 
 @app.post("/api/login", response_model=TokenResponse)
 def login(payload: LoginRequest):
+    """Authenticate the dashboard user and issue a short-lived access token."""
     if payload.username != ADMIN_USERNAME or not verify_password(payload.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
@@ -150,6 +169,7 @@ def login(payload: LoginRequest):
 
 @app.get("/api/kpis", response_model=KPIResponse)
 def get_kpis(machines: int = 3, hours: int = 168, _: str = Depends(require_user)):
+    """Return computed KPI payload for the requested synthetic time window."""
     docs = list(generate_docs(machines, hours))
     mean_stdev = temperature_stats(docs) or (None, None)
     return {

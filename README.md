@@ -68,18 +68,84 @@ Use this script before disabling any VPN or firewall rules.
 
 ## Architecture & Structure
 
-- `backend/` - Python Azure Functions packaged as containers
-  - `insights_function/` - FastAPI server computing and serving KPIs
-  - `aggregate_function/` - Data aggregation service
-  - `ingest_function/` - Telemetry ingestion handler
-  - `ask_function/` - AI-powered query service
-  - `email_function/` - Alert and reporting service
-  - `tests/` - Unit tests for KPI calculations and API
-- `frontend/` - React single-page app for visualizing KPIs and metrics
-- `simulator/` - Python script that generates realistic vending machine telemetry
-- `.github/workflows/ci.yml` - GitHub Actions CI/CD pipeline
-- `azure-pipelines.yml` - Azure DevOps deployment pipeline template
-- `decision_log.json` - Architecture and design decisions
+The project is organized as a lightweight full-stack analytics system:
+
+- `backend/` - Python services and tests
+  - `insights_function/` - main FastAPI app (`/api/login`, `/api/kpis`) and KPI logic
+  - `aggregate_function/` - placeholder entry point for future aggregation microservice
+  - `ingest_function/` - placeholder entry point for future ingestion microservice
+  - `ask_function/` - placeholder entry point for future natural-language querying
+  - `email_function/` - placeholder entry point for future alert/report service
+  - `tests/` - pytest suite for KPI calculations and API behavior
+- `frontend/` - React dashboard and tests
+  - `src/App.jsx` - auth flow, layout, and page composition
+  - `src/components/KpiTable.jsx` - tabular KPI rendering
+  - `src/components/InsightsPanel.jsx` - chart visualizations (Recharts)
+  - `src/components/AskBox.jsx` - placeholder UI section
+  - `src/api/client.js` - API client (`login`, `getKpis`) with optional sample fallback
+  - `public/kpis.json` - optional sample KPI response for fallback mode
+- `simulator/` - telemetry generator script for synthetic device data
+- `scripts/` - troubleshooting utilities (connectivity checks)
+- `run_local.py` - one-command local launcher for backend + frontend
+- `.github/workflows/` - CI, Pages deploy, and Azure Static Web Apps workflow files
+- `azure-pipelines.yml` - Azure DevOps pipeline placeholder
+- `decision_log.json` - currently empty (reserved for architecture decisions)
+
+## Repository Walkthrough
+
+### Backend (`backend/insights_function`)
+
+- `server.py`
+  - exposes `POST /api/login` (JWT token issuance)
+  - exposes protected `GET /api/kpis` endpoint
+  - applies CORS settings from `ALLOWED_ORIGINS`
+  - generates synthetic data in-memory (for demo/development mode)
+- `kpi_calculations.py`
+  - computes revenue, units sold, stockout events, average transaction value
+  - computes temperature statistics and payment error rate
+  - computes active machine count and time-series revenue by hour
+- `requirements.txt`
+  - includes FastAPI, Uvicorn, auth libraries, and test dependencies
+
+### Backend Tests (`backend/tests`)
+
+- `test_api.py`
+  - validates login failure handling
+  - validates `/api/kpis` response shape
+  - validates auth requirement for KPI endpoint
+- `test_kpi_calculations.py`
+  - unit tests each KPI helper with deterministic fixture data
+- `test_sample.py`
+  - simple placeholder smoke test
+
+### Frontend (`frontend/src`)
+
+- `App.jsx`
+  - renders sign-in form when no token exists
+  - stores JWT in `localStorage` and passes token to KPI components
+- `api/client.js`
+  - centralized fetch wrapper and endpoint helpers
+  - optional fallback to `/kpis.json` when `REACT_APP_ALLOW_SAMPLE_FALLBACK=true`
+- `components/KpiTable.jsx`
+  - fetches and renders KPI values as a table
+- `components/InsightsPanel.jsx`
+  - fetches KPI payload and visualizes units/revenue as bar charts
+- `components/__tests__/InsightsPanel.test.jsx`
+  - validates chart render flow and metric switching
+- `setupTests.js`
+  - Jest setup with `@testing-library/jest-dom` and `ResizeObserver` test mock
+
+### Utility Scripts
+
+- `run_local.py`
+  - provisions backend virtual environment
+  - installs backend dependencies
+  - starts backend (`uvicorn`) and frontend (`npm start`)
+  - opens browser and falls back to backend endpoint if frontend cannot start
+- `scripts/check_connectivity.py`
+  - helps diagnose localhost/network blocks (VPN/firewall/hosts issues)
+- `simulator/vending_simulator.py`
+  - emits JSONL telemetry for configurable machines and timespan
 
 ## How It Works
 
@@ -195,10 +261,12 @@ Deploy containerized functions to Azure using Azure DevOps, Docker, and the prov
 
 If you want a zero-cost setup (within free quotas):
 
-1. **Frontend on GitHub Pages**
+1. **Frontend on GitHub Pages (already wired in this repo)**
   - Workflow: `.github/workflows/pages.yml`
   - Add repository secret `REACT_APP_API_BASE_URL` with your backend URL (example: `https://your-backend.onrender.com`).
   - Push to `main` to publish.
+
+  If you specifically need Google-hosted static pages, you can reuse the same `frontend/build` output with Firebase Hosting free tier.
 
 2. **Backend on a free container host**
   - Recommended hosts with free plans: Render or Koyeb.
@@ -216,6 +284,16 @@ If you want a zero-cost setup (within free quotas):
   - Frontend calls `POST /api/login` with username/password.
   - Backend returns a bearer token.
   - KPI endpoint `GET /api/kpis` requires `Authorization: Bearer <token>`.
+
+## Quality Checks
+
+The repository currently validates cleanly with:
+
+- Backend tests: `python -m pytest backend/tests -q`
+- Frontend tests: `npm --prefix frontend test -- --watchAll=false`
+- Frontend production build: `npm --prefix frontend run build`
+
+All three checks pass in the current codebase.
 
 > Free-tier note: some free backends sleep after inactivity and have monthly usage limits.
 

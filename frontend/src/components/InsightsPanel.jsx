@@ -12,12 +12,14 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+// Shows chart-based KPI views (units sold and revenue over time).
 export default function InsightsPanel({ token }) {
   const [kpis, setKpis] = useState(null);
   const [error, setError] = useState(null);
   const [metric, setMetric] = useState('units');
 
   useEffect(() => {
+    // Only fetch data when the user has a valid auth token.
     if (!token) {
       return;
     }
@@ -29,12 +31,12 @@ export default function InsightsPanel({ token }) {
   if (error) return <div className="error">Error loading insights: {error}</div>;
   if (!kpis) return <div>Loading insights…</div>;
 
-  // prepare data for ``units_sold_per_slot`` bar chart
+  // Convert slot dictionary into chart-friendly objects.
   const slotData = kpis.units_sold_per_slot
     ? Object.entries(kpis.units_sold_per_slot).map(([slot, qty]) => ({ slot, qty }))
     : [];
 
-  // prepare data for revenue over time
+  // Revenue time-series already arrives in chart-ready format.
   const revenueData = kpis.revenue_by_hour || [];
 
   return (

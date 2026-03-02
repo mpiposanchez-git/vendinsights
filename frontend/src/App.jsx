@@ -4,6 +4,10 @@ import InsightsPanel from './components/InsightsPanel';
 import AskBox from './components/AskBox';
 import { login } from './api/client';
 
+// Main application shell:
+// - handles login/logout
+// - stores auth token
+// - renders dashboard sections when authenticated
 export default function App() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +20,7 @@ export default function App() {
     setError(null);
     setLoading(true);
     try {
+      // Authenticate and save token so refreshes keep the user signed in.
       const response = await login(username, password);
       localStorage.setItem('authToken', response.access_token);
       setToken(response.access_token);
@@ -28,10 +33,12 @@ export default function App() {
   }
 
   function handleLogout() {
+    // Clear token in both React state and browser storage.
     localStorage.removeItem('authToken');
     setToken(null);
   }
 
+  // If there is no token, show a simple sign-in screen.
   if (!token) {
     return (
       <div className="app-container">
@@ -71,6 +78,7 @@ export default function App() {
     );
   }
 
+  // Authenticated dashboard view.
   return (
     <div className="app-container">
       <header className="app-header">

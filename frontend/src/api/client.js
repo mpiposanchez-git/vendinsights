@@ -1,6 +1,8 @@
+// Optional base URL, useful when frontend and backend are hosted separately.
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
 function toApiUrl(path) {
+  // Allow absolute URLs for flexibility while still supporting relative API paths.
   if (path.startsWith('http')) {
     return path;
   }
@@ -8,12 +10,13 @@ function toApiUrl(path) {
 }
 
 export async function request(url, options) {
+  // Centralized request helper: all API calls share the same error handling.
   const res = await fetch(toApiUrl(url), options);
   if (!res.ok) throw new Error('Network response was not ok');
   return res.json();
 }
 
-// thin wrappers for domain API calls
+// Domain-specific wrapper for KPI retrieval.
 export async function getKpis(token) {
   try {
     return await request('/api/kpis', {
@@ -22,6 +25,7 @@ export async function getKpis(token) {
       },
     });
   } catch (error) {
+    // Optional demo mode: fallback to static sample data when backend is unavailable.
     if (process.env.REACT_APP_ALLOW_SAMPLE_FALLBACK !== 'true') {
       throw error;
     }
@@ -30,6 +34,7 @@ export async function getKpis(token) {
 }
 
 export async function login(username, password) {
+  // Sends credentials and expects a JWT token response from the backend.
   return request('/api/login', {
     method: 'POST',
     headers: {

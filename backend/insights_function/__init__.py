@@ -1,4 +1,8 @@
-# insights function entry point
+"""Insights function package.
+
+Contains KPI helper imports and a minimal placeholder `main` entrypoint to show
+how calculations would be orchestrated in a production function.
+"""
 
 from .kpi_calculations import (
     revenue_per_week,

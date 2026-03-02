@@ -41,6 +41,7 @@ PYTHON = None
 
 
 def ensure_backend_env():
+    """Create backend virtualenv (if needed) and install Python dependencies."""
     global PYTHON
     if not os.path.isdir(VENV_DIR):
         print('Creating virtual environment for backend...')
@@ -56,6 +57,7 @@ def ensure_backend_env():
 
 
 def start_backend():
+    """Launch FastAPI backend via Uvicorn and return the process handle."""
     print('Starting backend API...')
     # run from repository root so that package imports resolve
     return subprocess.Popen([
@@ -72,6 +74,7 @@ def start_backend():
 
 
 def start_frontend():
+    """Launch React dev server, installing `node_modules` on first run."""
     print('Starting frontend dev server...')
     npm_path = shutil.which('npm')
     if not npm_path:
@@ -97,10 +100,12 @@ def start_frontend():
 
 
 def main():
+    """Orchestrate backend/frontend startup and graceful shutdown."""
     ensure_backend_env()
     backend_proc = start_backend()
     # wait for backend to accept connections (poll `/api/kpis`)
     def wait_for_backend(url: str, timeout: int = 10) -> bool:
+        """Poll an HTTP endpoint until success or timeout."""
         deadline = time.time() + timeout
         while time.time() < deadline:
             try:
