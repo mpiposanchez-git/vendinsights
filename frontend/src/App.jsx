@@ -95,7 +95,7 @@ export default function App() {
           <InsightsPanel token={token} />
         </section>
         <section className="card">
-          <AskBox />
+          <AskBox token={token} />
         </section>
       </main>
     </div>

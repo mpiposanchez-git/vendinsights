@@ -49,7 +49,7 @@ It captures the core decisions needed to reproduce the current app behavior from
 
 **Decision**
 - Use `POST /api/login` to issue JWT tokens.
-- Protect `GET /api/kpis` using bearer auth dependency.
+- Protect `GET /api/kpis`, `POST /api/ask`, and `GET /api/lumo-mode` using bearer auth dependency.
 
 **Why**
 - Stateless and simple for free-tier hosting.
@@ -96,6 +96,22 @@ It captures the core decisions needed to reproduce the current app behavior from
 - Payment error rate
 - Active machines
 - Revenue by hour
+
+## ADR-020: Local-first Lumo+ strategist
+
+**Decision**
+- Implement a local strategy engine for `POST /api/ask` as the default mode (`LUMO_MODE=local`).
+- Keep optional OpenAI integration behind mode switch (`LUMO_MODE=auto|openai`).
+
+**Why**
+- Works without paid external API.
+- Preserves data-grounded insight generation in local/dev environments.
+- Allows gradual upgrade to hosted LLM mode when API access is available.
+
+**Behavior**
+- Builds recommendations from persisted KPI + telemetry context.
+- Produces structured response sections: highlights, risks, business strategies, and machine expansion signal.
+- Exposes `GET /api/lumo-mode` so frontend can display active mode badge.
 
 ## 4. Frontend Decisions
 

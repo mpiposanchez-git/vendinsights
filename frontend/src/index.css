@@ -75,8 +75,103 @@ select {
 }
 
 .ask-box {
-  font-style: italic;
+  color: #333;
+}
+
+.ask-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.mode-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.mode-local {
+  background-color: #e8f3ff;
+  color: #004070;
+}
+
+.mode-openai {
+  background-color: #eafaf1;
+  color: #146c43;
+}
+
+.ask-help {
+  margin-top: 0;
   color: #555;
+}
+
+.ask-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ask-form textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.55rem 0.65rem;
+  font-family: inherit;
+}
+
+.ask-form button {
+  align-self: flex-start;
+  padding: 0.5rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  background-color: #005ea5;
+  color: #fff;
+  cursor: pointer;
+}
+
+.ask-form button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.ask-answer {
+  margin-top: 0.9rem;
+  border-top: 1px solid #e6e6e6;
+  padding-top: 0.8rem;
+}
+
+.ask-answer-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.ask-action-plan {
+  margin-top: 0.9rem;
+  background-color: #f4f8ff;
+  border: 1px solid #d6e4ff;
+  border-radius: 6px;
+  padding: 0.65rem 0.8rem;
+}
+
+.ask-action-plan h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: #004070;
+}
+
+.ask-action-plan ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.ask-action-plan li {
+  margin: 0.2rem 0;
 }
 
 .login-card {

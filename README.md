@@ -10,6 +10,7 @@ A comprehensive telemetry collection, processing, and analysis platform for vend
 - **Processes data** through a series of microservices to aggregate and enrich telemetry
 - **Computes KPIs** (Key Performance Indicators) including revenue, stock-out events, transaction values, temperature stability, and payment error rates
 - **Visualizes insights** through an interactive React dashboard showing metrics, trends, and anomalies
+- **Answers business questions** with Lumo+ Ask (local AI mode by default), including highlights, risk signals, and strategy recommendations
 - **Simulates telemetry** for testing and demo purposes without physical machines
 
 The platform is designed to scale from prototype to production, with a containerized backend, a responsive React frontend for analytics, and CI/CD workflows.
@@ -86,7 +87,7 @@ For a detailed rationale behind technical choices, see
 The project is organized as a lightweight full-stack analytics system:
 
 - `backend/` - Python services and tests
-  - `insights_function/` - main FastAPI app (`/api/login`, `/api/kpis`) and KPI logic
+  - `insights_function/` - main FastAPI app (`/api/login`, `/api/kpis`, `/api/ask`) and KPI logic
   - `aggregate_function/` - placeholder entry point for future aggregation microservice
   - `ingest_function/` - placeholder entry point for future ingestion microservice
   - `ask_function/` - placeholder entry point for future natural-language querying
@@ -96,8 +97,8 @@ The project is organized as a lightweight full-stack analytics system:
   - `src/App.jsx` - auth flow, layout, and page composition
   - `src/components/KpiTable.jsx` - tabular KPI rendering
   - `src/components/InsightsPanel.jsx` - chart visualizations (Recharts)
-  - `src/components/AskBox.jsx` - placeholder UI section
-  - `src/api/client.js` - API client (`login`, `getKpis`) with optional sample fallback
+  - `src/components/AskBox.jsx` - in-app Lumo+ Q&A panel (data-grounded recommendations)
+  - `src/api/client.js` - API client (`login`, `getKpis`, `askLumo`) with optional sample fallback
   - `public/kpis.json` - optional sample KPI response for fallback mode
 - `simulator/` - telemetry generator script for synthetic device data
 - `scripts/` - troubleshooting utilities (connectivity checks)
@@ -112,6 +113,8 @@ The project is organized as a lightweight full-stack analytics system:
 - `server.py`
   - exposes `POST /api/login` (JWT token issuance)
   - exposes protected `GET /api/kpis` endpoint
+  - exposes protected `POST /api/ask` endpoint for natural-language Q&A over KPI/telemetry data
+  - exposes protected `GET /api/lumo-mode` endpoint for runtime mode visibility in UI
   - applies CORS settings from `ALLOWED_ORIGINS`
   - reads telemetry from database and computes KPIs from persisted records
 - `kpi_calculations.py`
@@ -189,9 +192,20 @@ This generates 5 days of telemetry data across 5 simulated machines. Adjust `--m
 
 ### Backend API
 
-The backend exposes a FastAPI server with `POST /api/login` and protected `GET /api/kpis`.
+The backend exposes a FastAPI server with `POST /api/login` and protected `GET /api/kpis`, `POST /api/ask`, and `GET /api/lumo-mode`.
 `/api/kpis` reads from database storage. If the database is empty, the app auto-seeds
-it with simulated telemetry (configurable via env vars).
+it with simulated telemetry (configurable via env vars). `/api/ask` answers operational
+questions using KPI + telemetry context and returns business-focused sections:
+- highlights happening now,
+- risk signals,
+- business strategies,
+- machine expansion signal.
+
+Lumo+ modes:
+
+- `LUMO_MODE=local` (default): fully local strategy engine, no API key required.
+- `LUMO_MODE=auto`: use OpenAI only if `OPENAI_API_KEY` is present, otherwise local mode.
+- `LUMO_MODE=openai`: force OpenAI mode.
 
 Database behavior:
 
@@ -225,6 +239,8 @@ The React app displays KPI values and interactive charts. After login, it fetche
 - **Revenue Chart**: Line chart showing revenue trends over time
 - **Inventory Chart**: Bar chart showing units sold per machine slot
 - **Metric Toggle**: Switch between different KPIs to view trends
+- **Ask Panel (Lumo+)**: Ask business questions and receive data-grounded highlights + strategy recommendations
+- **Mode Badge**: Displays active Ask mode (`Local AI` or `OpenAI`) from `/api/lumo-mode`
 
 **Running the frontend:**
 
@@ -260,6 +276,7 @@ The backend is organized as a Python package with separate functions for differe
 - **aggregate_function**: Aggregates raw telemetry into time-windowed summaries
 - **ingest_function**: Entry point for receiving vending machine telemetry
 - **ask_function**: AI-powered queries on vending data
+  - Note: in current MVP, Ask behavior is implemented directly in `insights_function/server.py`
 - **email_function**: Sends alerts and reports via email
 
 Each function has its own requirements.txt and Dockerfile for containerized deployment.
@@ -306,6 +323,9 @@ If you want a zero-cost setup (within free quotas):
   - `AUTO_SEED_DATA` = `true`/`false` (optional, default `true`)
   - `SEED_MACHINES` = initial seeded machine count (optional, default `5`)
   - `SEED_HOURS` = seeded hours per machine (optional, default `336`)
+  - `LUMO_MODE` = `local` / `auto` / `openai` (optional, default `local`)
+  - `OPENAI_API_KEY` = required only when using OpenAI modes
+  - `LUMO_MODEL` = OpenAI model name (optional, default `gpt-4o-mini`)
 
 4. **Login flow**
   - Frontend calls `POST /api/login` with username/password.

@@ -66,8 +66,8 @@
 		},
 		{
 			"id": "B-002",
-			"decision": "Expose two main endpoints: POST /api/login and GET /api/kpis.",
-			"rationale": "Simple auth flow and protected KPI retrieval for dashboard UX.",
+			"decision": "Expose authentication and analytics endpoints: POST /api/login, GET /api/kpis, POST /api/ask, and GET /api/lumo-mode.",
+			"rationale": "Support secure KPI retrieval plus natural-language business insight workflows.",
 			"api_contract": {
 				"login": {
 					"method": "POST",
@@ -89,6 +89,25 @@
 					"query": {
 						"machines": "int, default 3",
 						"hours": "int, default 168"
+					}
+				},
+				"ask": {
+					"method": "POST",
+					"path": "/api/ask",
+					"auth": "Bearer token required",
+					"input": {
+						"question": "string",
+						"machines": "int, default 3",
+						"hours": "int, default 168"
+					}
+				},
+				"lumo_mode": {
+					"method": "GET",
+					"path": "/api/lumo-mode",
+					"auth": "Bearer token required",
+					"output": {
+						"configured_mode": "local|auto|openai",
+						"active_mode": "local|openai"
 					}
 				}
 			}
@@ -135,6 +154,30 @@
 			"decision": "KPI set includes revenue, units-per-slot, stockout count, average transaction value, temperature stats, payment error rate, active machines, and revenue-by-hour.",
 			"rationale": "Balanced view of sales, operations, and reliability.",
 			"data_shape_requirement": "Telemetry docs must include timestamp, deviceId, inventory, sales, temperature_c, payment_status"
+		},
+		{
+			"id": "B-009",
+			"decision": "Use a local-first Lumo strategist as default Ask mode with optional OpenAI mode.",
+			"rationale": "Ensures business Q&A works without external paid API while preserving upgrade path to hosted LLM.",
+			"implementation": {
+				"modes": [
+					"local",
+					"auto",
+					"openai"
+				],
+				"default_mode": "local",
+				"response_sections": [
+					"highlights",
+					"risks",
+					"business_strategies",
+					"machine_expansion_signal"
+				],
+				"env": [
+					"LUMO_MODE",
+					"OPENAI_API_KEY",
+					"LUMO_MODEL"
+				]
+			}
 		}
 	],
 	"frontend_decisions": [
@@ -188,6 +231,15 @@
 			"decision": "Use /vendinsights as public base path for static hosting.",
 			"rationale": "Match GitHub Pages repository-site path behavior.",
 			"implementation": "homepage field in frontend/package.json"
+		},
+		{
+			"id": "F-007",
+			"decision": "Display Ask mode badge in UI using backend mode endpoint.",
+			"rationale": "Makes active AI mode explicit for operators and avoids confusion between local and OpenAI behavior.",
+			"implementation": {
+				"component": "frontend/src/components/AskBox.jsx",
+				"api": "GET /api/lumo-mode"
+			}
 		}
 	],
 	"developer_experience_decisions": [
@@ -301,9 +353,9 @@
 	"security_decisions": [
 		{
 			"id": "S-001",
-			"decision": "Require authentication for KPI endpoint.",
+			"decision": "Require authentication for KPI and Ask endpoints.",
 			"rationale": "Prevent unauthenticated data access.",
-			"implementation": "/api/kpis protected by bearer token dependency"
+			"implementation": "/api/kpis, /api/ask, and /api/lumo-mode protected by bearer token dependency"
 		},
 		{
 			"id": "S-002",
@@ -319,10 +371,11 @@
 	],
 	"replication_blueprint": {
 		"from_scratch_steps": [
-			"Create Python FastAPI backend with /api/login and protected /api/kpis endpoints.",
+			"Create Python FastAPI backend with /api/login and protected /api/kpis + /api/ask + /api/lumo-mode endpoints.",
 			"Implement KPI helpers for revenue, units, stockouts, avg transaction, temperature, payment errors, active machines, and hourly revenue.",
 			"Use synthetic telemetry generator initially to avoid external dependencies.",
-			"Create React frontend with login screen, token storage, KPI table, and chart panel.",
+			"Create React frontend with login screen, token storage, KPI table, chart panel, and Ask mode badge.",
+			"Implement local-first Ask strategist with business recommendations and optional OpenAI mode.",
 			"Add API client with configurable base URL and optional static fallback payload.",
 			"Add local launcher that boots backend/frontend and loads optional .env settings.",
 			"Add backend/ frontend tests and keep a minimal smoke test set.",
@@ -358,6 +411,11 @@
 			"id": "N-004",
 			"limitation": "CI tolerates failures in lint/tests via '|| true'.",
 			"next_decision_needed": "Enforce strict CI gates for release branches."
+		},
+		{
+			"id": "N-005",
+			"limitation": "Local strategist is heuristic-based and does not yet learn from user feedback loops.",
+			"next_decision_needed": "Add feedback capture and periodic strategy tuning for higher recommendation precision."
 		}
 	]
 }

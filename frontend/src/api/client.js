@@ -43,3 +43,22 @@ export async function login(username, password) {
     body: JSON.stringify({ username, password }),
   });
 }
+
+export async function askLumo(token, question, machines = 3, hours = 168) {
+  return request('/api/ask', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ question, machines, hours }),
+  });
+}
+
+export async function getLumoMode(token) {
+  return request('/api/lumo-mode', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}

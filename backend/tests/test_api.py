@@ -1,5 +1,7 @@
 """Integration-style API tests for auth and KPI endpoints."""
 
+import os
+
 from fastapi.testclient import TestClient
 from backend.insights_function.server import app
 
@@ -45,3 +47,57 @@ def test_get_kpis_requires_auth():
     """KPI endpoint is protected and must return 401 without a token."""
     res = client.get("/api/kpis")
     assert res.status_code == 401
+
+
+def test_ask_requires_auth():
+    """Ask endpoint is protected and must reject unauthenticated requests."""
+    res = client.post("/api/ask", json={"question": "hello"})
+    assert res.status_code == 403 or res.status_code == 401
+
+
+def test_ask_returns_local_answer_without_openai_key(monkeypatch):
+    """Default local mode should answer even when OPENAI_API_KEY is not configured."""
+    monkeypatch.setenv("LUMO_MODE", "local")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    os.environ.pop("OPENAI_API_KEY", None)
+    from backend.insights_function import server as server_module
+
+    server_module.LUMO_MODE = "local"
+    server_module.OPENAI_API_KEY = None
+
+    res = client.post("/api/ask", headers=auth_headers(), json={"question": "test prompt"})
+    assert res.status_code == 200
+    answer = res.json()["answer"]
+    assert "Highlights right now:" in answer
+    assert "Business strategies:" in answer
+    assert "Machine expansion signal:" in answer
+    assert "Action plan (next 7 days):" in answer
+
+
+def test_ask_openai_mode_returns_503_without_key(monkeypatch):
+    """OpenAI mode should raise a clear configuration error if no API key is set."""
+    monkeypatch.setenv("LUMO_MODE", "openai")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    os.environ.pop("OPENAI_API_KEY", None)
+    from backend.insights_function import server as server_module
+
+    server_module.LUMO_MODE = "openai"
+    server_module.OPENAI_API_KEY = None
+
+    res = client.post("/api/ask", headers=auth_headers(), json={"question": "test prompt"})
+    assert res.status_code == 503
+
+
+def test_get_lumo_mode_requires_auth():
+    """Lumo mode endpoint must be protected by auth."""
+    res = client.get("/api/lumo-mode")
+    assert res.status_code == 403 or res.status_code == 401
+
+
+def test_get_lumo_mode_shape_with_auth():
+    """Lumo mode endpoint should return configured and active mode fields."""
+    res = client.get("/api/lumo-mode", headers=auth_headers())
+    assert res.status_code == 200
+    body = res.json()
+    assert "configured_mode" in body
+    assert "active_mode" in body
