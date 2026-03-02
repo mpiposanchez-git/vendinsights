@@ -59,8 +59,15 @@ jobs:
           docker build -t vendinsights/email:latest backend/email_function
       - name: Push images to registry
         if: github.ref == 'refs/heads/main'
+        env:
+          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+          REGISTRY_PASS: ${{ secrets.REGISTRY_PASS }}
         run: |
-          echo "docker login -u ${{ secrets.REGISTRY_USER }} -p ${{ secrets.REGISTRY_PASS }} registry.example.com"
+          if [ -z "$REGISTRY_USER" ] || [ -z "$REGISTRY_PASS" ]; then
+            echo "Registry secrets are not configured; skipping push."
+            exit 0
+          fi
+          echo "docker login -u $REGISTRY_USER -p *** registry.example.com"
           echo "docker push vendinsights/ingest:latest"
           echo "docker push vendinsights/aggregate:latest"
           echo "docker push vendinsights/insights:latest"

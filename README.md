@@ -297,6 +297,23 @@ Built with React, Recharts for visualization, and CSS for responsive design.
 
 Deploy the frontend with GitHub Pages and deploy the backend container to a free host (Render or Koyeb). CI and build checks are defined in `.github/workflows/ci.yml`.
 
+CI note: the container image push stage is now guarded and only executes on `main`
+when both repository secrets `REGISTRY_USER` and `REGISTRY_PASS` are configured.
+Without these secrets, CI still runs build/test steps and safely skips registry push.
+
+### Required GitHub Secrets
+
+Configure repository secrets in **GitHub → Settings → Secrets and variables → Actions**.
+
+- `REACT_APP_API_BASE_URL` (recommended for Pages deploy)
+  - Used by `.github/workflows/pages.yml` at build time so frontend calls the hosted backend.
+  - Example: `https://your-backend.onrender.com`.
+
+- `REGISTRY_USER` (optional)
+- `REGISTRY_PASS` (optional)
+  - Used by `.github/workflows/ci.yml` image-push stage.
+  - If either is missing, CI still runs tests/build and skips only the registry push step.
+
 ### Free-tier deployment (frontend + protected access)
 
 If you want a zero-cost setup (within free quotas):
