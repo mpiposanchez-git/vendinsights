@@ -1,1 +1,363 @@
-[]
+{
+	"project": {
+		"name": "Vending Insights",
+		"purpose": "Monitor vending-machine operations using synthetic telemetry, compute KPIs, and present them in a web dashboard.",
+		"last_updated": "2026-03-02",
+		"replication_goal": "Enable rebuilding the current app behavior from scratch with the same product and technical decisions."
+	},
+	"global_constraints": [
+		{
+			"id": "C-001",
+			"decision": "Target free-tier hosting for production-like deployment.",
+			"rationale": "Keep operating cost at $0 while supporting demos and small-scale usage.",
+			"impact": "Frontend hosted on GitHub Pages; backend designed to run on free container hosts like Render/Koyeb."
+		},
+		{
+			"id": "C-002",
+			"decision": "Do not commit real secrets to source control.",
+			"rationale": "Prevent credential leakage and simplify safe collaboration.",
+			"impact": "Use environment variables and local `.env` (git-ignored)."
+		}
+	],
+	"architecture_decisions": [
+		{
+			"id": "A-001",
+			"decision": "Use a split architecture: Python backend + React frontend.",
+			"rationale": "Separates API computation from UI concerns and supports independent deployment.",
+			"implementation": {
+				"backend": "FastAPI app in backend/insights_function/server.py",
+				"frontend": "React SPA in frontend/src"
+			}
+		},
+		{
+			"id": "A-002",
+			"decision": "Keep additional backend function folders as placeholders.",
+			"rationale": "Preserve intended microservice layout for ingest/aggregate/ask/email expansion.",
+			"implementation": [
+				"backend/ingest_function",
+				"backend/aggregate_function",
+				"backend/ask_function",
+				"backend/email_function"
+			]
+		},
+		{
+			"id": "A-003",
+			"decision": "Use synthetic telemetry generation inside backend for default runtime.",
+			"rationale": "Guarantees app works without external databases or device feeds.",
+			"implementation": "generate_docs() in backend/insights_function/server.py"
+		},
+		{
+			"id": "A-004",
+			"decision": "Provide a separate telemetry simulator script for offline dataset generation.",
+			"rationale": "Supports testing and experimentation outside the live API.",
+			"implementation": "simulator/vending_simulator.py emits newline-delimited JSON"
+		}
+	],
+	"backend_decisions": [
+		{
+			"id": "B-001",
+			"decision": "Framework selection: FastAPI.",
+			"rationale": "Fast to build, typed request/response models, automatic docs.",
+			"dependencies": [
+				"fastapi",
+				"uvicorn[standard]",
+				"pydantic"
+			]
+		},
+		{
+			"id": "B-002",
+			"decision": "Expose two main endpoints: POST /api/login and GET /api/kpis.",
+			"rationale": "Simple auth flow and protected KPI retrieval for dashboard UX.",
+			"api_contract": {
+				"login": {
+					"method": "POST",
+					"path": "/api/login",
+					"input": {
+						"username": "string",
+						"password": "string"
+					},
+					"output": {
+						"access_token": "jwt",
+						"token_type": "bearer",
+						"expires_in": "seconds"
+					}
+				},
+				"kpis": {
+					"method": "GET",
+					"path": "/api/kpis",
+					"auth": "Bearer token required",
+					"query": {
+						"machines": "int, default 3",
+						"hours": "int, default 168"
+					}
+				}
+			}
+		},
+		{
+			"id": "B-003",
+			"decision": "Use JWT with HS256 for session auth.",
+			"rationale": "Stateless auth appropriate for simple hosted API.",
+			"implementation": {
+				"jwt_library": "python-jose",
+				"algorithm": "HS256",
+				"env": [
+					"JWT_SECRET",
+					"TOKEN_EXPIRE_MINUTES"
+				]
+			}
+		},
+		{
+			"id": "B-004",
+			"decision": "Support plaintext or bcrypt-stored admin password.",
+			"rationale": "Plaintext eases local setup; bcrypt supports safer deployment.",
+			"implementation": "verify_password() in server.py checks for bcrypt prefix '$2'"
+		},
+		{
+			"id": "B-005",
+			"decision": "Protect /api/kpis with FastAPI HTTPBearer dependency.",
+			"rationale": "Avoid exposing KPI data without authentication.",
+			"implementation": "require_user() dependency in server.py"
+		},
+		{
+			"id": "B-006",
+			"decision": "CORS is configurable via ALLOWED_ORIGINS env var.",
+			"rationale": "Needed for cross-origin frontend calls from GitHub Pages.",
+			"implementation": "Comma-separated list parsed in server.py; default '*' for local convenience"
+		},
+		{
+			"id": "B-007",
+			"decision": "Compute KPI logic in a dedicated module.",
+			"rationale": "Keeps API layer thin and testable.",
+			"implementation": "backend/insights_function/kpi_calculations.py"
+		},
+		{
+			"id": "B-008",
+			"decision": "KPI set includes revenue, units-per-slot, stockout count, average transaction value, temperature stats, payment error rate, active machines, and revenue-by-hour.",
+			"rationale": "Balanced view of sales, operations, and reliability.",
+			"data_shape_requirement": "Telemetry docs must include timestamp, deviceId, inventory, sales, temperature_c, payment_status"
+		}
+	],
+	"frontend_decisions": [
+		{
+			"id": "F-001",
+			"decision": "Framework selection: React 18 with CRA tooling.",
+			"rationale": "Simple setup, broad ecosystem, compatible with GitHub Pages workflow.",
+			"dependencies": [
+				"react",
+				"react-dom",
+				"react-scripts",
+				"recharts"
+			]
+		},
+		{
+			"id": "F-002",
+			"decision": "Frontend requires login before loading dashboard data.",
+			"rationale": "Align with protected backend endpoint.",
+			"implementation": "App.jsx renders Sign In if auth token absent"
+		},
+		{
+			"id": "F-003",
+			"decision": "Persist auth token in localStorage under key authToken.",
+			"rationale": "Keep user session between page refreshes.",
+			"tradeoff": "No refresh token flow; simple session model"
+		},
+		{
+			"id": "F-004",
+			"decision": "Use API client wrapper with optional sample fallback.",
+			"rationale": "Enable development/demo mode if backend is temporarily unavailable.",
+			"implementation": {
+				"file": "frontend/src/api/client.js",
+				"env": [
+					"REACT_APP_API_BASE_URL",
+					"REACT_APP_ALLOW_SAMPLE_FALLBACK"
+				],
+				"fallback_file": "frontend/public/kpis.json"
+			}
+		},
+		{
+			"id": "F-005",
+			"decision": "Display KPIs in both table and chart views.",
+			"rationale": "Provide quick raw-value inspection and trend visualization.",
+			"implementation": [
+				"KpiTable.jsx",
+				"InsightsPanel.jsx"
+			]
+		},
+		{
+			"id": "F-006",
+			"decision": "Use /vendinsights as public base path for static hosting.",
+			"rationale": "Match GitHub Pages repository-site path behavior.",
+			"implementation": "homepage field in frontend/package.json"
+		}
+	],
+	"developer_experience_decisions": [
+		{
+			"id": "D-001",
+			"decision": "Provide one-command local launcher.",
+			"rationale": "Reduce setup complexity for non-expert users.",
+			"implementation": "run_local.py"
+		},
+		{
+			"id": "D-002",
+			"decision": "run_local.py auto-loads root .env and does not override already-set env vars.",
+			"rationale": "Make credential/config setup easy while preserving explicit shell overrides.",
+			"implementation": "load_local_env() in run_local.py"
+		},
+		{
+			"id": "D-003",
+			"decision": "Disable CRA auto-browser launch and open exactly one tab from launcher.",
+			"rationale": "Prevent duplicate browser tabs during startup.",
+			"implementation": "BROWSER=none env for npm start; webbrowser.open(FRONTEND_URL)"
+		},
+		{
+			"id": "D-004",
+			"decision": "Use /docs for backend readiness/fallback checks in launcher.",
+			"rationale": "/api/kpis is auth-protected and returns 401 before login.",
+			"implementation": "wait_for_backend('http://127.0.0.1:8000/docs') and fallback open('/docs')"
+		},
+		{
+			"id": "D-005",
+			"decision": "Include .env.example template and keep real .env out of git.",
+			"rationale": "Standard safe onboarding pattern.",
+			"implementation": [
+				".env.example committed",
+				".env ignored by .gitignore"
+			]
+		}
+	],
+	"testing_and_quality_decisions": [
+		{
+			"id": "T-001",
+			"decision": "Use pytest for backend unit and API tests.",
+			"rationale": "Lightweight, readable assertions, strong Python ecosystem support.",
+			"coverage_focus": [
+				"KPI math helpers",
+				"Auth-protected API behavior"
+			]
+		},
+		{
+			"id": "T-002",
+			"decision": "Use React Testing Library for frontend component tests.",
+			"rationale": "Test from user interaction perspective.",
+			"implementation": "InsightsPanel test with mocked API response"
+		},
+		{
+			"id": "T-003",
+			"decision": "Mock ResizeObserver in Jest setup.",
+			"rationale": "Required for Recharts components under JSDOM.",
+			"implementation": "frontend/src/setupTests.js"
+		},
+		{
+			"id": "T-004",
+			"decision": "Filter known React test-utils deprecation noise in tests.",
+			"rationale": "Keep test output readable while preserving real errors.",
+			"implementation": "Targeted console.error filter in setupTests.js"
+		}
+	],
+	"deployment_decisions": [
+		{
+			"id": "P-001",
+			"decision": "Primary frontend deployment target: GitHub Pages.",
+			"rationale": "Free, integrated with repository workflows.",
+			"implementation": "Workflow .github/workflows/pages.yml"
+		},
+		{
+			"id": "P-002",
+			"decision": "Primary backend deployment target: free container host (Render recommended).",
+			"rationale": "Supports FastAPI container with no-cost entry plan.",
+			"implementation": {
+				"docker_context": "backend/insights_function",
+				"required_env": [
+					"JWT_SECRET",
+					"ADMIN_USERNAME",
+					"ADMIN_PASSWORD",
+					"TOKEN_EXPIRE_MINUTES",
+					"ALLOWED_ORIGINS"
+				]
+			}
+		},
+		{
+			"id": "P-003",
+			"decision": "Set ALLOWED_ORIGINS to origin only (no path) in hosted environments.",
+			"rationale": "Prevent CORS mismatch when frontend is served from /vendinsights path.",
+			"example": "https://mpiposanchez-git.github.io"
+		},
+		{
+			"id": "P-004",
+			"decision": "Document deployment in two formats: full guide + ultra-short guide.",
+			"rationale": "Serve both beginner and fast execution workflows.",
+			"implementation": [
+				"FREE_TIER_DEPLOYMENT_GUIDE.md",
+				"FREE_TIER_DEPLOYMENT_QUICK.md"
+			]
+		},
+		{
+			"id": "P-005",
+			"decision": "CI workflow is informative and not strictly gating due to use of '|| true' in several lint/test steps.",
+			"rationale": "Allows pipeline continuity for early-stage development.",
+			"tradeoff": "Failures may be hidden; tighten later for production readiness"
+		}
+	],
+	"security_decisions": [
+		{
+			"id": "S-001",
+			"decision": "Require authentication for KPI endpoint.",
+			"rationale": "Prevent unauthenticated data access.",
+			"implementation": "/api/kpis protected by bearer token dependency"
+		},
+		{
+			"id": "S-002",
+			"decision": "Use configurable admin credentials via environment variables.",
+			"rationale": "Avoid hardcoding credentials in source code for real deployments.",
+			"note": "Defaults exist for local development only and must be changed in hosted environments"
+		},
+		{
+			"id": "S-003",
+			"decision": "JWT secret must be explicitly set in deployment.",
+			"rationale": "Default value is insecure and for local demo only."
+		}
+	],
+	"replication_blueprint": {
+		"from_scratch_steps": [
+			"Create Python FastAPI backend with /api/login and protected /api/kpis endpoints.",
+			"Implement KPI helpers for revenue, units, stockouts, avg transaction, temperature, payment errors, active machines, and hourly revenue.",
+			"Use synthetic telemetry generator initially to avoid external dependencies.",
+			"Create React frontend with login screen, token storage, KPI table, and chart panel.",
+			"Add API client with configurable base URL and optional static fallback payload.",
+			"Add local launcher that boots backend/frontend and loads optional .env settings.",
+			"Add backend/ frontend tests and keep a minimal smoke test set.",
+			"Configure GitHub Pages workflow for frontend and free container deployment for backend.",
+			"Set deployment env vars and lock CORS origin to frontend host.",
+			"Validate with end-to-end login + KPI retrieval tests."
+		],
+		"minimum_env_for_hosted_backend": [
+			"JWT_SECRET",
+			"ADMIN_USERNAME",
+			"ADMIN_PASSWORD",
+			"TOKEN_EXPIRE_MINUTES",
+			"ALLOWED_ORIGINS"
+		]
+	},
+	"known_limitations_and_next_decisions": [
+		{
+			"id": "N-001",
+			"limitation": "No persistent database; metrics are generated per request.",
+			"next_decision_needed": "Choose storage layer (Cosmos DB, Postgres, or files) and ingestion path."
+		},
+		{
+			"id": "N-002",
+			"limitation": "Only one frontend test currently covers chart interaction.",
+			"next_decision_needed": "Expand test coverage for login flow, error states, and API fallback behavior."
+		},
+		{
+			"id": "N-003",
+			"limitation": "Placeholder backend function folders are not implemented.",
+			"next_decision_needed": "Define whether to keep monolith backend or split into real services."
+		},
+		{
+			"id": "N-004",
+			"limitation": "CI tolerates failures in lint/tests via '|| true'.",
+			"next_decision_needed": "Enforce strict CI gates for release branches."
+		}
+	]
+}

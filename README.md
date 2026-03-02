@@ -14,6 +14,13 @@ A comprehensive telemetry collection, processing, and analysis platform for vend
 
 The platform is designed to scale from prototype to production, with containerized backend functions deployable to Azure, a responsive React frontend for analytics, and comprehensive CI/CD pipelines.
 
+## Docs Index
+
+- `FREE_TIER_DEPLOYMENT_GUIDE.md` - full step-by-step deployment guide (Render + GitHub Pages)
+- `FREE_TIER_DEPLOYMENT_QUICK.md` - one-page fast deployment version
+- `docs/architecture-decisions.md` - human-readable ADR-style architecture decisions
+- `decision_log.json` - machine-readable comprehensive decision log
+
 ## Quick Start
 
 ### Prerequisites
@@ -39,12 +46,12 @@ python run_local.py
 1. Creates and activates a Python virtual environment for the backend (if needed)
 2. Installs backend dependencies
 3. Starts the backend API on `http://localhost:8000`
-4. Starts the frontend dev server on `http://localhost:3000` (if Node/npm are available)
+4. Starts the frontend dev server on `http://localhost:3000/vendinsights` (if Node/npm are available)
 5. Opens the frontend in your default browser or, if the frontend is missing, opens
-   the backend `/api/kpis` endpoint directly
+  the backend `/docs` endpoint directly
 
 The script now automatically runs `npm install` in the `frontend/` directory when
-`node_modules` are absent and will fall back to the API URL if the frontend
+`node_modules` are absent and will fall back to the backend docs URL if the frontend
 fails to start or npm isn't installed.
 
 For easiest local login setup, copy `.env.example` to `.env` and edit
@@ -67,10 +74,14 @@ Use this script before disabling any VPN or firewall rules.
 
 ### Access the Application
 
-- **Frontend Dashboard**: `http://localhost:3000` - View KPIs, charts, and insights
-- **Backend API**: `http://localhost:8000/api/kpis` - JSON endpoint with raw metrics
+- **Frontend Dashboard**: `http://localhost:3000/vendinsights` - Sign in and view KPIs/charts
+- **Backend API Docs**: `http://localhost:8000/docs` - Interactive endpoint docs
+- **Protected KPI API**: `http://localhost:8000/api/kpis` - Requires bearer token from `/api/login`
 
 ## Architecture & Structure
+
+For a detailed rationale behind technical choices, see
+`docs/architecture-decisions.md` and `decision_log.json`.
 
 The project is organized as a lightweight full-stack analytics system:
 
@@ -177,7 +188,7 @@ This generates 5 days of telemetry data across 5 simulated machines. Adjust `--m
 
 ### Backend API
 
-The backend exposes a FastAPI server at `/api/kpis` that returns computed metrics from telemetry. By default it generates three machines worth of hourly data for the past week.
+The backend exposes a FastAPI server with `POST /api/login` and protected `GET /api/kpis`. By default it generates three machines worth of hourly data for the past week.
 
 **Running the backend manually:**
 
@@ -188,7 +199,7 @@ pip install -r requirements.txt
 uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Then browse `http://localhost:8000/api/kpis` to see the JSON output.
+Then browse `http://localhost:8000/docs` to authenticate and test the endpoints interactively.
 
 **Running tests:**
 
@@ -200,7 +211,7 @@ python -m pytest
 
 ### Frontend Dashboard
 
-The React app displays KPI values and interactive charts. It fetches data from `/api/kpis` (or from `public/kpis.json` during development). The dashboard includes:
+The React app displays KPI values and interactive charts. After login, it fetches protected data from `/api/kpis` (or from `public/kpis.json` when sample fallback is enabled). The dashboard includes:
 
 - **KPI Table**: Real-time metrics with key statistics
 - **Revenue Chart**: Line chart showing revenue trends over time
@@ -215,7 +226,7 @@ npm install
 npm start
 ```
 
-The app will open at `http://localhost:3000`.
+The app will open at `http://localhost:3000/vendinsights`.
 
 > **Note**: Node.js & npm required. If you see "npm not found" errors, install Node from [https://nodejs.org/](https://nodejs.org/).
 
